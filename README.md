@@ -1,6 +1,10 @@
 # Callout Tracker
 
-Callout Tracker creates a clickable index of selected Obsidian callouts. It works locally in your vault and does not use network services.
+Callout Tracker helps you stay organized in a large Obsidian vault by collecting important callouts into one clickable overview.
+
+Instead of interrupting your writing to maintain a separate task list or idea document, leave callouts where they naturally belong in your notes. Mark a thought as an `idea`, a task as a `todo`, or a useful suggestion as a custom callout such as `note`, `idea`, or `clue`. Callout Tracker then lets you review those items together, find what still needs to be done, revisit suggestions from your notes, and develop ideas that need more attention.
+
+The overview is grouped by callout type, searchable, and linked back to the exact note and line where each callout appears. This makes it easier to turn scattered thoughts across your vault into an organized workflow. It works locally in your vault and does not use network services.
 
 ## Usage
 
