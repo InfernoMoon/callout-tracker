@@ -37,6 +37,7 @@ function parseBlockConfig(
 	const config: CalloutTrackerBlockConfig = {
 		calloutTypes: [...DEFAULT_CALLOUT_TYPES],
 		rootFolder: defaultRootFolder,
+		search: '',
 	};
 
 	for (const rawLine of source.split('\n')) {
@@ -58,6 +59,8 @@ function parseBlockConfig(
 				.filter(Boolean);
 		} else if (key === 'rootfolder') {
 			config.rootFolder = value;
+		} else if (key === 'search') {
+			config.search = value;
 		}
 	}
 
@@ -82,7 +85,8 @@ async function renderCalloutTracker(
 			config.calloutTypes,
 			ignoredPrefixes,
 		);
-		if (entries.length === 0) {
+		const matchingEntries = filterEntries(entries, config.search);
+		if (matchingEntries.length === 0) {
 			container.createEl('p', {
 				text: 'No matching callouts found.',
 				cls: 'callout-tracker__empty',
@@ -91,7 +95,7 @@ async function renderCalloutTracker(
 		}
 
 		for (const calloutType of config.calloutTypes) {
-			const typeEntries = entries.filter((entry) => entry.type === calloutType);
+			const typeEntries = matchingEntries.filter((entry) => entry.type === calloutType);
 			if (typeEntries.length === 0) {
 				continue;
 			}
@@ -111,7 +115,18 @@ async function renderCalloutTracker(
 				cls: 'callout-tracker__error',
 			});
 			new Notice('Callout tracker could not scan the vault.');
-		}
+	}
+}
+
+function filterEntries(entries: CalloutEntry[], search: string): CalloutEntry[] {
+	const query = search.trim().toLowerCase();
+	if (!query) {
+		return entries;
+	}
+
+	return entries.filter((entry) =>
+		`${entry.title}\n${entry.body}`.toLowerCase().includes(query),
+	);
 }
 
 function renderEntry(

@@ -10,7 +10,7 @@ import type CalloutTrackerPlugin from './main';
 
 type TrackerOption = {
 	kind: 'setting';
-	key: 'callouts' | 'rootfolder';
+	key: 'callouts' | 'rootfolder' | 'search';
 	description: string;
 };
 
@@ -24,6 +24,7 @@ type Suggestion = TrackerOption | CalloutOption;
 const OPTIONS: TrackerOption[] = [
 	{ kind: 'setting', key: 'callouts', description: 'Callout types to include' },
 	{ kind: 'setting', key: 'rootfolder', description: 'Folder to search' },
+	{ kind: 'setting', key: 'search', description: 'Text to find in callout titles or bodies' },
 ];
 
 export function registerCalloutTrackerEditorSuggest(

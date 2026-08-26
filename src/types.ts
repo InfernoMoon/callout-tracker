@@ -10,6 +10,7 @@ export interface CalloutEntry {
 export interface CalloutTrackerBlockConfig {
 	calloutTypes: string[];
 	rootFolder: string;
+	search: string;
 }
 
 export interface CustomCallout {
