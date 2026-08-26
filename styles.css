@@ -31,6 +31,20 @@
 	font-size: var(--font-ui-smaller);
 }
 
+.callout-tracker__icon-preview {
+	align-items: center;
+	display: flex;
+	justify-content: center;
+	margin-left: 0.5em;
+	min-height: var(--input-height);
+	min-width: var(--input-height);
+}
+
+.callout-tracker__icon-suggestion {
+	display: inline-flex;
+	margin-right: 0.5em;
+}
+
 .callout-tracker__title {
 	font-weight: var(--font-semibold);
 	margin-bottom: 0.25em;
@@ -47,4 +61,21 @@
 .callout-tracker__empty,
 .callout-tracker__error {
 	color: var(--text-muted);
+}
+
+.callout-tracker__custom-callout {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	margin: 1em 0;
+	padding: 0.5em 0.75em 0;
+}
+
+.callout-tracker__custom-callout > summary {
+	cursor: pointer;
+	font-weight: var(--font-semibold);
+	padding-bottom: 0.5em;
+}
+
+.callout-tracker__custom-callout-fields {
+	padding-top: 0.25em;
 }

@@ -2,7 +2,7 @@
 	"id": "callout-tracker",
 	"name": "Callout Tracker",
 	"version": "1.0.0",
-	"minAppVersion": "1.4.0",
+	"minAppVersion": "1.4.10",
 	"description": "Collect matching callouts from your vault in a clickable index.",
 	"isDesktopOnly": false
 }

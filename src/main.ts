@@ -1,6 +1,7 @@
 import { Plugin } from 'obsidian';
 import { registerCalloutTrackerProcessor } from './callout-renderer';
 import { registerCalloutTrackerEditorSuggest } from './editor-suggest';
+import { CalloutStyleManager } from './callout-styles';
 import {
 	DEFAULT_SETTINGS,
 	CalloutTrackerSettings,
@@ -9,6 +10,7 @@ import {
 
 export default class CalloutTrackerPlugin extends Plugin {
 	settings!: CalloutTrackerSettings;
+	calloutStyleManager!: CalloutStyleManager;
 
 	async onload(): Promise<void> {
 		const savedSettings = (await this.loadData()) as StoredCalloutTrackerSettings | null;
@@ -28,6 +30,12 @@ export default class CalloutTrackerPlugin extends Plugin {
 			}
 		}
 
+		this.calloutStyleManager = new CalloutStyleManager(this.app);
+		this.registerMarkdownPostProcessor((element) => {
+			this.calloutStyleManager.applyToElement(element);
+		});
+		this.calloutStyleManager.update(this.settings.customCallouts);
+
 		registerCalloutTrackerProcessor(this);
 		this.registerEditorSuggest(registerCalloutTrackerEditorSuggest(this.app));
 		this.addSettingTab(new CalloutTrackerSettingTab(this.app, this));
@@ -35,6 +43,10 @@ export default class CalloutTrackerPlugin extends Plugin {
 
 	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
+	}
+
+	updateCalloutStyles(): void {
+		this.calloutStyleManager.update(this.settings.customCallouts);
 	}
 }
 

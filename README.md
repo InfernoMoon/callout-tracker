@@ -17,6 +17,8 @@ rootfolder: Campaign
 
 In the settings, use **Ignore prefixes** to exclude matching file and folder names. Enter multiple prefixes separated by commas; whitespace around each value is removed. The field contains `_` by default.
 
+Under **Custom callouts**, select **Add custom callout** to define the appearance of a native callout. Each definition supports a name, font color, background color, optional border and border color, and optional icon name. The icon field suggests available Obsidian icons while you type and shows a live preview. These styles are applied to normal Obsidian callouts such as `> [!idea]` and update when the setting changes.
+
 Each result shows its note and line number. Select a result to open the note and place the cursor on the callout.
 
 When editing a `callout-tracker` block, type on a new line to get suggestions for `callouts:` and `rootfolder:`.

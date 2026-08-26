@@ -11,3 +11,13 @@ export interface CalloutTrackerBlockConfig {
 	calloutTypes: string[];
 	rootFolder: string;
 }
+
+export interface CustomCallout {
+	name: string;
+	fontColor: string;
+	backgroundColor: string;
+	hasBorder: boolean;
+	borderColor: string;
+	hasIcon: boolean;
+	iconName: string;
+}
