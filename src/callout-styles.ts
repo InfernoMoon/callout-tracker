@@ -15,9 +15,9 @@ export class CalloutStyleManager {
 	applyToElement(container: HTMLElement): void {
 		const elements = container.findAll('.callout[data-callout]');
 		for (const element of elements) {
-			const name = element.getAttr('data-callout')?.toLowerCase();
-			const callout = this.callouts.find(
-				(candidate) => normalizeName(candidate.name) === name,
+			const callout = findCalloutStyle(
+				this.callouts,
+				element.getAttr('data-callout') ?? '',
 			);
 			if (callout) {
 				applyCalloutStyle(element, callout);
@@ -34,7 +34,15 @@ export class CalloutStyleManager {
 	}
 }
 
-function applyCalloutStyle(element: HTMLElement, callout: CustomCallout): void {
+export function findCalloutStyle(
+	callouts: CustomCallout[],
+	name: string,
+): CustomCallout | undefined {
+	const normalizedName = normalizeName(name);
+	return callouts.find((candidate) => normalizeName(candidate.name) === normalizedName);
+}
+
+export function applyCalloutStyle(element: HTMLElement, callout: CustomCallout): void {
 	const fontColor = normalizeHexColor(callout.fontColor, '');
 	const backgroundColor = normalizeHexColor(callout.backgroundColor, '');
 	const borderColor = normalizeHexColor(callout.borderColor, fontColor);

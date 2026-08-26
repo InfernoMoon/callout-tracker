@@ -5,10 +5,12 @@ import {
 	MarkdownRenderer,
 	MarkdownView,
 	Notice,
+	setIcon,
 } from 'obsidian';
+import { applyCalloutStyle, findCalloutStyle, normalizeIconName } from './callout-styles';
 import { findCallouts } from './callout-scanner';
 import type CalloutTrackerPlugin from './main';
-import type { CalloutEntry, CalloutTrackerBlockConfig } from './types';
+import type { CalloutEntry, CalloutTrackerBlockConfig, CustomCallout } from './types';
 
 const DEFAULT_CALLOUT_TYPES = ['idea', 'note', 'todo'];
 
@@ -20,6 +22,7 @@ export function registerCalloutTrackerProcessor(plugin: CalloutTrackerPlugin): v
 				plugin.app,
 				parseBlockConfig(source, plugin.settings.rootFolder),
 				plugin.settings.ignoredPrefixes,
+				plugin.settings.customCallouts,
 				container,
 				context,
 			);
@@ -65,6 +68,7 @@ async function renderCalloutTracker(
 	app: App,
 	config: CalloutTrackerBlockConfig,
 	ignoredPrefixes: string[],
+	customCallouts: CustomCallout[],
 	container: HTMLElement,
 	context: MarkdownPostProcessorContext,
 ): Promise<void> {
@@ -97,7 +101,7 @@ async function renderCalloutTracker(
 				cls: 'callout-tracker__heading',
 			});
 			for (const entry of typeEntries) {
-				renderEntry(app, entry, container, context);
+				renderEntry(app, entry, customCallouts, container, context);
 			}
 		}
 	} catch (error) {
@@ -113,21 +117,31 @@ async function renderCalloutTracker(
 function renderEntry(
 	app: App,
 	entry: CalloutEntry,
+	customCallouts: CustomCallout[],
 	container: HTMLElement,
 	context: MarkdownPostProcessorContext,
 ): void {
-	const item = container.createDiv({ cls: 'callout-tracker__entry' });
+	const item = container.createDiv({ cls: 'callout callout-tracker__entry' });
+	item.setAttr('data-callout', entry.type);
 	item.setAttr('role', 'button');
 	item.setAttr('tabindex', '0');
 
-	const sourceLink = item.createEl('a', {
+	const open = (): void => {
+		void openCallout(app, entry, context.sourcePath);
+	};
+
+	const titleEl = item.createDiv({ cls: 'callout-title' });
+	const iconEl = titleEl.createDiv({ cls: 'callout-icon' });
+	const titleInnerEl = titleEl.createDiv({ cls: 'callout-title-inner' });
+	titleInnerEl.createSpan({
+		text: entry.title || capitalize(entry.type),
+	});
+
+	const sourceLink = titleEl.createEl('a', {
 		text: `${entry.fileName} · line ${entry.startLine + 1}`,
 		cls: 'callout-tracker__source',
 	});
 	sourceLink.href = '#';
-	const open = (): void => {
-		void openCallout(app, entry, context.sourcePath);
-	};
 	sourceLink.addEventListener('click', (event) => {
 		event.preventDefault();
 		event.stopPropagation();
@@ -141,19 +155,25 @@ function renderEntry(
 		}
 	});
 
-	if (entry.title) {
-		item.createDiv({
-			text: entry.title,
-			cls: 'callout-tracker__title',
-		});
-	}
-
+	const contentEl = item.createDiv({ cls: 'callout-content' });
 	if (entry.body) {
-		const bodyEl = item.createDiv({ cls: 'callout-tracker__body' });
+		const bodyEl = contentEl.createDiv({ cls: 'callout-tracker__body' });
 		const child = new MarkdownRenderChild(bodyEl);
 		context.addChild(child);
 		void MarkdownRenderer.render(app, entry.body, bodyEl, entry.filePath, child);
 	}
+
+	const callout = findCalloutStyle(customCallouts, entry.type);
+	if (callout) {
+		applyCalloutStyle(item, callout);
+		if (callout.hasIcon && callout.iconName.trim()) {
+			setIcon(iconEl, normalizeIconName(callout.iconName));
+		}
+	}
+}
+
+function capitalize(value: string): string {
+	return value.slice(0, 1).toUpperCase() + value.slice(1);
 }
 
 async function openCallout(

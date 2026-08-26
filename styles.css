@@ -3,14 +3,15 @@
 	margin-bottom: 0.5em;
 }
 
-.callout-tracker__entry {
-	border: 1px solid var(--background-modifier-border);
-	border-left: 3px solid var(--interactive-accent);
-	border-radius: var(--radius-s);
-	margin: 0.6em 0;
-	padding: 0.7em 0.9em;
+.callout-tracker .callout-tracker__entry {
 	cursor: pointer;
+	margin: 0.5em 0 !important;
 	transition: background-color 120ms ease;
+}
+
+.callout-tracker .callout-title {
+	align-items: center;
+	gap: 0.5em;
 }
 
 .callout-tracker__entry:hover,
@@ -23,7 +24,8 @@
 	display: inline-block;
 	font-size: var(--font-ui-small);
 	font-weight: var(--font-semibold);
-	margin-bottom: 0.35em;
+	margin-left: auto;
+	white-space: nowrap;
 }
 
 .callout-tracker__suggestion-description {
@@ -43,11 +45,6 @@
 .callout-tracker__icon-suggestion {
 	display: inline-flex;
 	margin-right: 0.5em;
-}
-
-.callout-tracker__title {
-	font-weight: var(--font-semibold);
-	margin-bottom: 0.25em;
 }
 
 .callout-tracker__body > :first-child {
