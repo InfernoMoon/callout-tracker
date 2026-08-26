@@ -18,6 +18,8 @@ export interface CustomCallout {
 	backgroundColor: string;
 	hasBorder: boolean;
 	borderColor: string;
+	borderWidth?: string;
+	borderStyle?: string;
 	hasIcon: boolean;
 	iconName: string;
 }

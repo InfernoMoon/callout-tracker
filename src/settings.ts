@@ -10,10 +10,79 @@ export interface CalloutTrackerSettings {
 	customCallouts: CustomCallout[];
 }
 
+export const DEFAULT_CUSTOM_CALLOUTS: CustomCallout[] = [
+	{
+		name: 'todo',
+		fontColor: '#45f27d',
+		backgroundColor: '#0a2410',
+		hasBorder: true,
+		borderColor: '#45f27d',
+		borderWidth: '3px',
+		borderStyle: 'solid',
+		hasIcon: true,
+		iconName: 'list-checks',
+	},
+	{
+		name: 'idea',
+		fontColor: '#dfbb05',
+		backgroundColor: '#383200',
+		hasBorder: true,
+		borderColor: '#ebd107',
+		borderWidth: '4px',
+		borderStyle: 'solid',
+		hasIcon: true,
+		iconName: 'lightbulb',
+	},
+	{
+		name: 'note',
+		fontColor: '#05dfd8',
+		backgroundColor: '#003238',
+		hasBorder: true,
+		borderColor: '#0dbbac',
+		borderWidth: '4px',
+		borderStyle: 'solid',
+		hasIcon: true,
+		iconName: 'sticky-note',
+	},
+	{
+		name: 'hook',
+		fontColor: '#f0a34b',
+		backgroundColor: '#1a0d04',
+		hasBorder: true,
+		borderColor: '#e78a32',
+		borderWidth: '3px',
+		borderStyle: 'solid',
+		hasIcon: true,
+		iconName: 'fishing-hook',
+	},
+	{
+		name: 'rule',
+		fontColor: '#73b787',
+		backgroundColor: '#08201e',
+		hasBorder: true,
+		borderColor: '#3e8252',
+		borderWidth: '4px',
+		borderStyle: 'solid',
+		hasIcon: true,
+		iconName: 'scale',
+	},
+	{
+		name: 'clue',
+		fontColor: '#e86fa7',
+		backgroundColor: '#180611',
+		hasBorder: true,
+		borderColor: '#ff5fa2',
+		borderWidth: '3px',
+		borderStyle: 'solid',
+		hasIcon: true,
+		iconName: 'search',
+	},
+];
+
 export const DEFAULT_SETTINGS: CalloutTrackerSettings = {
 	rootFolder: '',
 	ignoredPrefixes: ['_'],
-	customCallouts: [],
+	customCallouts: DEFAULT_CUSTOM_CALLOUTS,
 };
 
 export class CalloutTrackerSettingTab extends PluginSettingTab {
@@ -143,16 +212,18 @@ function renderCustomCallout(
 			}),
 		);
 
+	let borderColorSetting: Setting | null = null;
 	new Setting(fieldsEl)
 		.setName('Has border')
 		.addToggle((toggle) =>
 			toggle.setValue(callout.hasBorder).onChange(async (value) => {
 				callout.hasBorder = value;
+				borderColorSetting?.settingEl.toggle(value);
 				await saveCalloutSettings(plugin);
 			}),
 		);
 
-	new Setting(fieldsEl)
+	borderColorSetting = new Setting(fieldsEl)
 		.setName('Border color')
 		.addColorPicker((color) =>
 			color.setValue(callout.borderColor).onChange(async (value) => {
@@ -160,19 +231,22 @@ function renderCustomCallout(
 				await saveCalloutSettings(plugin);
 			}),
 		);
+	borderColorSetting.settingEl.toggle(callout.hasBorder);
 
+	let iconSetting: Setting | null = null;
 	new Setting(fieldsEl)
 		.setName('Has icon')
 		.addToggle((toggle) =>
 			toggle.setValue(callout.hasIcon).onChange(async (value) => {
 				callout.hasIcon = value;
+				iconSetting?.settingEl.toggle(value);
 				await saveCalloutSettings(plugin);
 			}),
 		);
 
 	let iconPreviewEl: HTMLElement | null = null;
 	let iconSuggest: CalloutIconSuggest | null = null;
-	const iconSetting = new Setting(fieldsEl)
+	iconSetting = new Setting(fieldsEl)
 		.setName('Icon name')
 		.setDesc('Use a lucide icon name, for example lightbulb.')
 		.addText((text) => {
@@ -197,6 +271,7 @@ function renderCustomCallout(
 	iconPreviewEl = iconSetting.controlEl.createDiv({
 		cls: 'callout-tracker__icon-preview',
 	});
+	iconSetting.settingEl.toggle(callout.hasIcon);
 	updateIconPreview(iconPreviewEl, callout.iconName);
 
 	new Setting(fieldsEl).addButton((button) =>

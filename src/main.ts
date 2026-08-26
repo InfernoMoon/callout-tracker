@@ -19,6 +19,10 @@ export default class CalloutTrackerPlugin extends Plugin {
 			DEFAULT_SETTINGS,
 			savedSettings ?? {},
 		);
+		this.settings.ignoredPrefixes = [...this.settings.ignoredPrefixes];
+		this.settings.customCallouts = this.settings.customCallouts.map((callout) => ({
+			...callout,
+		}));
 
 		if (!savedSettings?.ignoredPrefixes) {
 			const oldPrefixes = [

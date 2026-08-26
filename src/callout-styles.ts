@@ -38,6 +38,8 @@ function applyCalloutStyle(element: HTMLElement, callout: CustomCallout): void {
 	const fontColor = normalizeHexColor(callout.fontColor, '');
 	const backgroundColor = normalizeHexColor(callout.backgroundColor, '');
 	const borderColor = normalizeHexColor(callout.borderColor, fontColor);
+	const borderWidth = normalizeBorderWidth(callout.borderWidth);
+	const borderStyle = normalizeBorderStyle(callout.borderStyle);
 
 	if (fontColor) {
 		setDynamicCssProp(element, 'color', fontColor);
@@ -52,7 +54,11 @@ function applyCalloutStyle(element: HTMLElement, callout: CustomCallout): void {
 		setDynamicCssProp(element, '--callout-color', hexToRgb(fontColor));
 	}
 	if (callout.hasBorder && borderColor) {
-		setDynamicCssProp(element, 'border-left', `4px solid ${borderColor}`);
+		setDynamicCssProp(
+			element,
+			'border-left',
+			`${borderWidth} ${borderStyle} ${borderColor}`,
+		);
 	} else if (!callout.hasBorder) {
 		setDynamicCssProp(element, 'border-left', 'none');
 	}
@@ -87,6 +93,18 @@ export function normalizeIconName(value: string): string {
 
 function normalizeHexColor(value: string, fallback: string): string {
 	return /^#[0-9a-f]{6}$/i.test(value.trim()) ? value.trim() : fallback;
+}
+
+function normalizeBorderWidth(value: string | undefined): string {
+	return value && /^(?:0|[1-9]\d*)(?:\.\d+)?px$/.test(value.trim())
+		? value.trim()
+		: '4px';
+}
+
+function normalizeBorderStyle(value: string | undefined): string {
+	return value && /^(?:solid|dashed|dotted|double)$/.test(value.trim())
+		? value.trim()
+		: 'solid';
 }
 
 function hexToRgb(hex: string): string {
