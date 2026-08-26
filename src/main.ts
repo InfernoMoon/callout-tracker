@@ -1,5 +1,6 @@
 import { Plugin } from 'obsidian';
 import { registerCalloutTrackerProcessor } from './callout-renderer';
+import { registerCalloutTrackerEditorSuggest } from './editor-suggest';
 import {
 	DEFAULT_SETTINGS,
 	CalloutTrackerSettings,
@@ -28,6 +29,7 @@ export default class CalloutTrackerPlugin extends Plugin {
 		}
 
 		registerCalloutTrackerProcessor(this);
+		this.registerEditorSuggest(registerCalloutTrackerEditorSuggest(this.app));
 		this.addSettingTab(new CalloutTrackerSettingTab(this.app, this));
 	}
 

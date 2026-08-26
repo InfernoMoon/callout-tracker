@@ -19,6 +19,8 @@ In the settings, use **Ignore prefixes** to exclude matching file and folder nam
 
 Each result shows its note and line number. Select a result to open the note and place the cursor on the callout.
 
+When editing a `callout-tracker` block, type on a new line to get suggestions for `callouts:` and `rootfolder:`.
+
 Callouts can use either of these forms:
 
 ```markdown
