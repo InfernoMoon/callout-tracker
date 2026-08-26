@@ -41,7 +41,7 @@ export default class CalloutTrackerPlugin extends Plugin {
 		this.calloutStyleManager.update(this.settings.customCallouts);
 
 		registerCalloutTrackerProcessor(this);
-		this.registerEditorSuggest(registerCalloutTrackerEditorSuggest(this.app));
+		this.registerEditorSuggest(registerCalloutTrackerEditorSuggest(this));
 		this.addSettingTab(new CalloutTrackerSettingTab(this.app, this));
 	}
 
