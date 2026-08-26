@@ -1,8 +1,45 @@
-/*
+.callout-tracker__heading {
+	margin-top: 1.5em;
+	margin-bottom: 0.5em;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.callout-tracker__entry {
+	border: 1px solid var(--background-modifier-border);
+	border-left: 3px solid var(--interactive-accent);
+	border-radius: var(--radius-s);
+	margin: 0.6em 0;
+	padding: 0.7em 0.9em;
+	cursor: pointer;
+	transition: background-color 120ms ease;
+}
 
-If your plugin does not need CSS, delete this file.
+.callout-tracker__entry:hover,
+.callout-tracker__entry:focus-visible {
+	background-color: var(--background-modifier-hover);
+	outline: none;
+}
 
-*/
+.callout-tracker__source {
+	display: inline-block;
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-semibold);
+	margin-bottom: 0.35em;
+}
+
+.callout-tracker__title {
+	font-weight: var(--font-semibold);
+	margin-bottom: 0.25em;
+}
+
+.callout-tracker__body > :first-child {
+	margin-top: 0;
+}
+
+.callout-tracker__body > :last-child {
+	margin-bottom: 0;
+}
+
+.callout-tracker__empty,
+.callout-tracker__error {
+	color: var(--text-muted);
+}
