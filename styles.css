@@ -61,16 +61,23 @@
 }
 
 .callout-tracker__custom-callout {
-	border: 1px solid var(--background-modifier-border);
+	border: none;
 	border-radius: var(--radius-s);
 	margin: 1em 0;
 	padding: 0.5em 0.75em 0;
 }
 
 .callout-tracker__custom-callout > summary {
+	align-items: center;
 	cursor: pointer;
+	display: flex;
+	gap: 0.5em;
 	font-weight: var(--font-semibold);
 	padding-bottom: 0.5em;
+}
+
+.callout-tracker__custom-callout > summary .callout-icon {
+	flex: 0 0 auto;
 }
 
 .callout-tracker__custom-callout-fields {

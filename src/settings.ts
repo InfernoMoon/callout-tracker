@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting, setIcon } from 'obsidian';
-import { normalizeIconName } from './callout-styles';
+import { applyCalloutStyle, normalizeIconName } from './callout-styles';
 import { CalloutIconSuggest } from './icon-suggest';
 import type CalloutTrackerPlugin from './main';
 import type { CustomCallout } from './types';
@@ -179,9 +179,13 @@ function renderCustomCallout(
 		cls: 'callout-tracker__custom-callout',
 	});
 	const summaryEl = calloutEl.createEl('summary', {
+	});
+	const summaryIconEl = summaryEl.createDiv({ cls: 'callout-icon' });
+	const summaryNameEl = summaryEl.createSpan({
 		text: callout.name || 'Unnamed callout',
 	});
 	const fieldsEl = calloutEl.createDiv({ cls: 'callout-tracker__custom-callout-fields' });
+	let refreshPreview = (): void => undefined;
 
 	new Setting(fieldsEl)
 		.setName('Name')
@@ -189,7 +193,7 @@ function renderCustomCallout(
 		.addText((text) =>
 			text.setValue(callout.name).onChange(async (value) => {
 				callout.name = value.trim().toLowerCase().replace(/\s+/g, '-');
-				summaryEl.setText(callout.name || 'Unnamed callout');
+				summaryNameEl.setText(callout.name || 'Unnamed callout');
 				await saveCalloutSettings(plugin);
 			}),
 		);
@@ -199,6 +203,7 @@ function renderCustomCallout(
 		.addColorPicker((color) =>
 			color.setValue(callout.fontColor).onChange(async (value) => {
 				callout.fontColor = value;
+				refreshPreview();
 				await saveCalloutSettings(plugin);
 			}),
 		);
@@ -208,6 +213,7 @@ function renderCustomCallout(
 		.addColorPicker((color) =>
 			color.setValue(callout.backgroundColor).onChange(async (value) => {
 				callout.backgroundColor = value;
+				refreshPreview();
 				await saveCalloutSettings(plugin);
 			}),
 		);
@@ -219,6 +225,7 @@ function renderCustomCallout(
 			toggle.setValue(callout.hasBorder).onChange(async (value) => {
 				callout.hasBorder = value;
 				borderColorSetting?.settingEl.toggle(value);
+				refreshPreview();
 				await saveCalloutSettings(plugin);
 			}),
 		);
@@ -228,6 +235,7 @@ function renderCustomCallout(
 		.addColorPicker((color) =>
 			color.setValue(callout.borderColor).onChange(async (value) => {
 				callout.borderColor = value;
+				refreshPreview();
 				await saveCalloutSettings(plugin);
 			}),
 		);
@@ -240,6 +248,7 @@ function renderCustomCallout(
 			toggle.setValue(callout.hasIcon).onChange(async (value) => {
 				callout.hasIcon = value;
 				iconSetting?.settingEl.toggle(value);
+				refreshPreview();
 				await saveCalloutSettings(plugin);
 			}),
 		);
@@ -252,6 +261,7 @@ function renderCustomCallout(
 		.addText((text) => {
 			text.setValue(callout.iconName).onChange(async (value) => {
 				callout.iconName = value.trim();
+				refreshPreview();
 				if (iconPreviewEl) {
 					updateIconPreview(iconPreviewEl, callout.iconName);
 				}
@@ -260,6 +270,7 @@ function renderCustomCallout(
 			iconSuggest = new CalloutIconSuggest(plugin.app, text.inputEl);
 			iconSuggest.onSelect(async (value) => {
 				callout.iconName = value;
+				refreshPreview();
 				iconSuggest?.setValue(value);
 				if (iconPreviewEl) {
 					updateIconPreview(iconPreviewEl, callout.iconName);
@@ -285,6 +296,15 @@ function renderCustomCallout(
 				settingTab.display();
 			}),
 	);
+
+	refreshPreview = (): void => {
+		applyCalloutStyle(calloutEl, callout);
+		summaryIconEl.empty();
+		if (callout.hasIcon && callout.iconName.trim()) {
+			setIcon(summaryIconEl, normalizeIconName(callout.iconName));
+		}
+	};
+	refreshPreview();
 }
 
 async function saveCalloutSettings(plugin: CalloutTrackerPlugin): Promise<void> {
