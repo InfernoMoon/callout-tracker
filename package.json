@@ -4,6 +4,14 @@
 	"description": "A clickable index of callouts in an Obsidian vault",
 	"main": "main.js",
 	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/InfernoMoon/callout-tracker.git"
+	},
+	"homepage": "https://github.com/InfernoMoon/callout-tracker",
+	"bugs": {
+		"url": "https://github.com/InfernoMoon/callout-tracker/issues"
+	},
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",

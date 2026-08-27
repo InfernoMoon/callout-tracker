@@ -52,3 +52,7 @@ Run a production build and lint check with:
 npm run build
 npm run lint
 ```
+
+## License
+
+Callout Tracker is licensed under the 0-BSD License. See [LICENSE](./LICENSE).
