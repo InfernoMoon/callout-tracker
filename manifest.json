@@ -1,7 +1,7 @@
 {
 	"id": "callout-tracker",
 	"name": "Callout Tracker",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"minAppVersion": "1.5.7",
 	"description": "Automatically collect specific callouts from across your vault into a centralized, clickable index. Quickly find and navigate to every idea, note, todo, or other configured callout in your notes.",
 	"author": "InfernoMoon",
