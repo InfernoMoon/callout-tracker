@@ -38,21 +38,3 @@ Callouts can use either of these forms:
 >[!todo]
 > Finish the draft.
 ```
-
-## Development
-
-```bash
-npm install
-npm run dev
-```
-
-Run a production build and lint check with:
-
-```bash
-npm run build
-npm run lint
-```
-
-## License
-
-Callout Tracker is licensed under the 0-BSD License. See [LICENSE](./LICENSE).
