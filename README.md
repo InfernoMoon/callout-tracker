@@ -20,13 +20,15 @@ Use Callouts in your notes to mark important thoughts, tasks, and suggestions.
 <br>
 
 Add a `callout-tracker` code block to any note:
+````markdown
 ```callout-tracker
 callouts: todo, idea, note
 rootfolder: MyRoot
 search: myfilter
 ```
+````
 
-`callouts:` is a comma- or space-separated list of callout types. If it is omitted, the default list is `idea, note, todo`.
+`callouts:` is a comma- or space-separated list of callout types.
 
 `rootfolder:` limits the search to that folder and its subfolders. If it is omitted, Callout Tracker uses the default root folder from **Settings → Callout Tracker**. The setting is empty by default, which searches the whole vault.
 
@@ -40,3 +42,19 @@ Under **Custom callouts** settings you can define the appearance of a callouts a
 The settings show a live preview, so you can see how the callout will look while you edit it. These styles are applied both to normal Obsidian callouts and to callouts displayed in the tracker.
 
 ![Callout Settings](assets/callout-settings.png)
+
+## API for AI agents and integrations
+
+Callout Tracker exposes a local API on the loaded plugin instance. The `search` method returns JSON-friendly results with the callout type, title, text, file path, and 1-based line number.
+
+```ts
+const tracker = Object.values(app.plugins.plugins)
+    .find((plugin) => plugin?.api?.search);
+
+await tracker.api.search({
+    callouts: ['hook', 'clue'],
+    search: 'dragon',
+});
+```
+
+The `callouts` and `search` options are optional. When omitted, the API uses the configured default root folder and the default callout types `idea`, `note`, and `todo`.

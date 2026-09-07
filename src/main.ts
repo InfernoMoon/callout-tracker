@@ -1,4 +1,6 @@
 import { Plugin } from 'obsidian';
+import { createCalloutTrackerApi } from './api';
+import type { CalloutTrackerApi } from './api';
 import { registerCalloutTrackerProcessor } from './callout-renderer';
 import { registerCalloutTrackerEditorSuggest } from './editor-suggest';
 import { CalloutStyleManager } from './callout-styles';
@@ -11,6 +13,7 @@ import {
 export default class CalloutTrackerPlugin extends Plugin {
 	settings!: CalloutTrackerSettings;
 	calloutStyleManager!: CalloutStyleManager;
+	api!: CalloutTrackerApi;
 
 	async onload(): Promise<void> {
 		const savedSettings = (await this.loadData()) as StoredCalloutTrackerSettings | null;
@@ -23,6 +26,7 @@ export default class CalloutTrackerPlugin extends Plugin {
 		this.settings.customCallouts = this.settings.customCallouts.map((callout) => ({
 			...callout,
 		}));
+		this.api = createCalloutTrackerApi(this);
 
 		if (!savedSettings?.ignoredPrefixes) {
 			const oldPrefixes = [
