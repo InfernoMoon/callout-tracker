@@ -20,7 +20,13 @@ type CalloutOption = {
 	name: string;
 };
 
-type Suggestion = TrackerOption | CalloutOption;
+type SummaryFunctionOption = {
+	kind: 'summary-function';
+	name: string;
+	description: string;
+};
+
+type Suggestion = TrackerOption | CalloutOption | SummaryFunctionOption;
 
 const OPTIONS: TrackerOption[] = [
 	{ kind: 'setting', key: 'callouts', label: 'callouts', description: 'Callout types to include' },
@@ -30,6 +36,14 @@ const OPTIONS: TrackerOption[] = [
 	{ kind: 'setting', key: 'summary', label: 'summary', description: 'Calculate a value from matching callouts' },
 ];
 
+const SUMMARY_FUNCTIONS: SummaryFunctionOption[] = [
+	{ kind: 'summary-function', name: 'count', description: 'Count matching callouts' },
+	{ kind: 'summary-function', name: 'sum', description: 'Add numeric property values' },
+	{ kind: 'summary-function', name: 'avg', description: 'Calculate the average of numeric values' },
+	{ kind: 'summary-function', name: 'max', description: 'Find the largest numeric value' },
+	{ kind: 'summary-function', name: 'min', description: 'Find the smallest numeric value' },
+];
+
 export function registerCalloutTrackerEditorSuggest(
 	plugin: CalloutTrackerPlugin,
 ): EditorSuggest<Suggestion> {
@@ -37,7 +51,7 @@ export function registerCalloutTrackerEditorSuggest(
 }
 
 class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
-	private suggestionKind: 'setting' | 'callout' = 'setting';
+	private suggestionKind: 'setting' | 'callout' | 'summary-function' = 'setting';
 
 	constructor(private readonly plugin: CalloutTrackerPlugin) {
 		super(plugin.app);
@@ -57,6 +71,12 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		if (calloutValue) {
 			this.suggestionKind = 'callout';
 			return calloutValue;
+		}
+
+		const summaryFunction = getSummaryFunctionTrigger(beforeCursor, cursor);
+		if (summaryFunction) {
+			this.suggestionKind = 'summary-function';
+			return summaryFunction;
 		}
 
 		const match = beforeCursor.match(/^\s*([a-z]*)$/i);
@@ -83,6 +103,9 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 				}))
 				.filter((option) => option.name && option.name.toLowerCase().startsWith(query));
 		}
+		if (this.suggestionKind === 'summary-function') {
+			return SUMMARY_FUNCTIONS.filter((option) => option.name.startsWith(query));
+		}
 
 		return OPTIONS.filter((option) => option.key.startsWith(query));
 	}
@@ -90,6 +113,11 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 	renderSuggestion(value: Suggestion, element: HTMLElement): void {
 		if (value.kind === 'callout') {
 			element.createDiv({ text: value.name });
+			return;
+		}
+		if (value.kind === 'summary-function') {
+			element.createDiv({ text: `${value.name}()` });
+			element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
 			return;
 		}
 
@@ -103,11 +131,15 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			return;
 		}
 
-		const replacement = value.kind === 'callout' ? `${value.name}, ` : `${value.label}: `;
+		const replacement = value.kind === 'callout'
+			? `${value.name}, `
+			: value.kind === 'summary-function'
+				? `${value.name}()`
+				: `${value.label}: `;
 		context.editor.replaceRange(replacement, context.start, context.end);
 		context.editor.setCursor({
 			line: context.start.line,
-			ch: context.start.ch + replacement.length,
+			ch: context.start.ch + replacement.length - (value.kind === 'summary-function' ? 1 : 0),
 		});
 	}
 }
@@ -133,6 +165,58 @@ function getCalloutValueTrigger(
 		end: cursor,
 		query,
 	};
+}
+
+function getSummaryFunctionTrigger(
+	beforeCursor: string,
+	cursor: EditorPosition,
+): EditorSuggestTriggerInfo | null {
+	const settingMatch = beforeCursor.match(/^\s*summary\s*:\s*(.*)$/i);
+	if (!settingMatch || settingMatch[1] === undefined) {
+		return null;
+	}
+
+	const value = settingMatch[1];
+	if (isInsideQuotedString(value)) {
+		return null;
+	}
+
+	const functionMatch = value.match(/(?:^|[+\-*/(\s])([a-z]*)$/i);
+	if (!functionMatch || functionMatch[1] === undefined) {
+		return null;
+	}
+
+	const query = functionMatch[1];
+	if (!query) {
+		return null;
+	}
+
+	return {
+		start: { line: cursor.line, ch: cursor.ch - query.length },
+		end: cursor,
+		query,
+	};
+}
+
+function isInsideQuotedString(value: string): boolean {
+	let quote: string | null = null;
+	let escaped = false;
+	for (const character of value) {
+		if (escaped) {
+			escaped = false;
+			continue;
+		}
+		if (character === '\\') {
+			escaped = true;
+			continue;
+		}
+		if (quote === null && (character === '"' || character === "'")) {
+			quote = character;
+		} else if (quote === character) {
+			quote = null;
+		}
+	}
+	return quote !== null;
 }
 
 function isInsideCalloutTrackerBlock(editor: Editor, lineNumber: number): boolean {

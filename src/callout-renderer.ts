@@ -42,7 +42,7 @@ function parseBlockConfig(
 		rootFolder: defaultRootFolder,
 		search: '',
 		filter: '',
-		summary: '',
+		summaries: [],
 	};
 
 	for (const rawLine of source.split('\n')) {
@@ -69,7 +69,9 @@ function parseBlockConfig(
 		} else if (key === 'filter') {
 			config.filter = value;
 		} else if (key === 'summary') {
-			config.summary = value;
+			if (value) {
+				config.summaries.push(value);
+			}
 		}
 	}
 
@@ -96,10 +98,10 @@ async function renderCalloutTracker(
 		);
 		const filterPredicate = createPropertyFilter(config.filter);
 		const matchingEntries = filterEntries(entries, config.search, filterPredicate);
-		if (config.summary.trim()) {
+		for (const summary of config.summaries) {
 			container.createDiv({
 				cls: 'callout-tracker__summary',
-				text: evaluateSummary(config.summary, matchingEntries),
+				text: evaluateSummary(summary, matchingEntries),
 			});
 		}
 		if (matchingEntries.length === 0) {

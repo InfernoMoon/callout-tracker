@@ -133,3 +133,20 @@ callouts: testSum
 filter: {status} = "missing"
 summary: sum({cost})
 ```
+
+## Multiple summary rows
+
+Expected rows:
+
+```text
+Total: 200€
+Average: 50€
+Items: 5
+```
+
+```callout-tracker
+callouts: testSum
+summary: "Total: " + sum({cost}) + "€"
+summary: "Average: " + avg({cost}) + "€"
+summary: "Items: " + count()
+```

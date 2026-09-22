@@ -18,7 +18,7 @@ export interface CalloutTrackerBlockConfig {
 	rootFolder: string;
 	search: string;
 	filter: string;
-	summary: string;
+	summaries: string[];
 }
 
 export interface CustomCallout {

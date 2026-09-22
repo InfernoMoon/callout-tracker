@@ -41,7 +41,7 @@ In the settings, use **Ignore prefixes** to exclude matching file and folder nam
 Under **Custom callouts** settings you can define the appearance of a callouts and add custom ones. Each definition supports a name, font color, background color, optional border and border color, and optional icon name.
 The settings show a live preview, so you can see how the callout will look while you edit it. These styles are applied both to normal Obsidian callouts and to callouts displayed in the tracker.
 
-![Callout Settings](assets/callout-settings.png)
+<img src="./assets/callout-settings.png" alt="Callout Settings" style="max-height: 200px; max-width: 100%; height: auto; width: auto;">
 
 ## Callout properties
 
@@ -56,6 +56,8 @@ Properties let you attach structured values to a callout. Write them directly be
 >
 > For my favorite band.
 ```
+
+<img src="./assets/properties.png" alt="Callout properties" style="max-height: 150px; max-width: 100%; height: auto; width: auto;">
 
 The property section ends at the first line that is not a property. A blank callout line can be used for readability, but it is not required.
 
@@ -91,6 +93,17 @@ Use `summary:` to calculate and display a value above the matching callouts. The
 ```callout-tracker
 callouts: cost
 summary: "Total: " + sum({cost}) + "€ | Average: " + avg({cost}) + "€"
+```
+````
+
+You can add `summary:` more than once. Each expression is rendered in its own row:
+
+````markdown
+```callout-tracker
+callouts: cost
+summary: "Total: " + sum({cost}) + "€"
+summary: "Average: " + avg({cost}) + "€"
+summary: "Items: " + count()
 ```
 ````
 
