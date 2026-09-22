@@ -72,7 +72,16 @@ filter: {cost} > 40
 
 This shows only callouts whose numeric `cost::` property is greater than 40. For string values, use `=` or `!=`. Numeric values support all comparison operators. Use `&`, `|`, and parentheses to combine conditions.
 
-`filter:` supports `{property}` references, quoted strings, numbers, and the comparison operators `=`, `!=`, `<`, `>`, `<=`, and `>=`. Missing properties do not match. `&` means all conditions must match, `|` means either condition may match, and parentheses can group conditions.
+`filter:` supports `{property}` references, quoted strings, numbers, arithmetic operators (`+`, `-`, `*`, `/`), and the comparison operators `=`, `!=`, `<`, `>`, `<=`, and `>=`:
+
+````markdown
+```callout-tracker
+callouts: cost
+filter: ({cost} + {fee}) / 2 >= 25
+```
+````
+
+Missing or non-numeric values make an arithmetic comparison fail. `&` means all conditions must match, `|` means either condition may match, and parentheses can group conditions.
 
 ### Summary
 

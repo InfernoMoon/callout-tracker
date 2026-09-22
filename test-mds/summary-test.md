@@ -2,27 +2,27 @@
 
 These callouts contain only properties so the summary results are easy to verify.
 
-> [!test] Alpha
+> [!testSum] Alpha
 > cost:: 40
 > bonus:: 5
 > status:: planned
 
-> [!test] Beta
+> [!testSum] Beta
 > cost:: 60
 > bonus:: 10
 > status:: planned
 
-> [!test] Gamma
+> [!testSum] Gamma
 > cost:: 20
 > bonus:: 0
 > status:: done
 
-> [!test] Delta
+> [!testSum] Delta
 > cost:: 80
 > bonus:: 20
 > status:: planned
 
-> [!test] No cost
+> [!testSum] No cost
 > bonus:: 3
 > status:: planned
 
@@ -31,7 +31,7 @@ These callouts contain only properties so the summary results are easy to verify
 Expected result: `5`
 
 ```callout-tracker
-callouts: test
+callouts: testSum
 summary: count()
 ```
 
@@ -40,7 +40,7 @@ summary: count()
 Expected result: `200`
 
 ```callout-tracker
-callouts: test
+callouts: testSum
 summary: sum({cost})
 ```
 
@@ -49,7 +49,7 @@ summary: sum({cost})
 Expected result: `50`
 
 ```callout-tracker
-callouts: test
+callouts: testSum
 summary: avg({cost})
 ```
 
@@ -58,7 +58,7 @@ summary: avg({cost})
 Expected result: `80`
 
 ```callout-tracker
-callouts: test
+callouts: testSum
 summary: max({cost})
 ```
 
@@ -67,7 +67,7 @@ summary: max({cost})
 Expected result: `20`
 
 ```callout-tracker
-callouts: test
+callouts: testSum
 summary: min({cost})
 ```
 
@@ -76,7 +76,7 @@ summary: min({cost})
 Expected result: `Total: 200€ | Average: 50€`
 
 ```callout-tracker
-callouts: test
+callouts: testSum
 summary: "Total: " + sum({cost}) + "€ | Average: " + avg({cost}) + "€"
 ```
 
@@ -87,7 +87,7 @@ Expected result: `118`
 The callout without a cost is ignored. The calculation is `(cost / 2) + 4.5` for each callout before the values are summed.
 
 ```callout-tracker
-callouts: test
+callouts: testSum
 summary: sum({cost} / 2 + 4.5)
 ```
 
@@ -98,7 +98,7 @@ Expected result: `58.75`
 The average uses `cost + bonus` for each callout with a numeric cost.
 
 ```callout-tracker
-callouts: test
+callouts: testSum
 summary: avg({cost} + {bonus})
 ```
 
@@ -109,7 +109,7 @@ Expected result: `Planned total: 180€ | Planned count: 4`
 The summary uses only the callouts that match the filter.
 
 ```callout-tracker
-callouts: test
+callouts: testSum
 filter: {status} = "planned"
 summary: "Planned total: " + sum({cost}) + "€ | Planned count: " + count()
 ```
@@ -119,7 +119,7 @@ summary: "Planned total: " + sum({cost}) + "€ | Planned count: " + count()
 Expected result: `140`
 
 ```callout-tracker
-callouts: test
+callouts: testSum
 filter: {cost} > 50
 summary: sum({cost})
 ```
@@ -129,7 +129,7 @@ summary: sum({cost})
 Expected result: `0` and no matching callouts below it.
 
 ```callout-tracker
-callouts: test
+callouts: testSum
 filter: {status} = "missing"
 summary: sum({cost})
 ```

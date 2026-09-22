@@ -4,10 +4,15 @@ type Literal =
 	| { kind: 'number'; value: number }
 	| { kind: 'string'; value: string };
 
+type ValueExpression =
+	| Literal
+	| { kind: 'property'; name: string }
+	| { kind: 'binary'; operator: '+' | '-' | '*' | '/'; left: ValueExpression; right: ValueExpression };
+
 type Comparison = {
-	propertyName: string;
+	left: ValueExpression;
 	operator: ComparisonOperator;
-	literal: Literal;
+	right: ValueExpression;
 };
 
 type FilterExpression =
@@ -16,6 +21,7 @@ type FilterExpression =
 	| { kind: 'or'; left: FilterExpression; right: FilterExpression };
 
 type ComparisonOperator = '=' | '!=' | '<' | '>' | '<=' | '>=';
+type EvaluatedValue = number | string | null;
 
 export class PropertyFilterError extends Error {
 	constructor(message: string) {
@@ -32,8 +38,7 @@ export function createPropertyFilter(expression: string | undefined): PropertyFi
 		return null;
 	}
 
-	const parser = new PropertyFilterParser(source);
-	const ast = parser.parse();
+	const ast = new PropertyFilterParser(source).parse();
 	return (properties) => evaluate(ast, properties);
 }
 
@@ -54,11 +59,7 @@ class PropertyFilterParser {
 	private parseOr(): FilterExpression {
 		let expression = this.parseAnd();
 		while (this.consume('|')) {
-			expression = {
-				kind: 'or',
-				left: expression,
-				right: this.parseAnd(),
-			};
+			expression = { kind: 'or', left: expression, right: this.parseAnd() };
 		}
 		return expression;
 	}
@@ -66,53 +67,82 @@ class PropertyFilterParser {
 	private parseAnd(): FilterExpression {
 		let expression = this.parsePrimary();
 		while (this.consume('&')) {
-			expression = {
-				kind: 'and',
-				left: expression,
-				right: this.parsePrimary(),
-			};
+			expression = { kind: 'and', left: expression, right: this.parsePrimary() };
 		}
 		return expression;
 	}
 
 	private parsePrimary(): FilterExpression {
-		if (this.consume('(')) {
-			const expression = this.parseOr();
-			this.expect(')');
-			return expression;
+		this.skipWhitespace();
+		if (this.source[this.position] === '(') {
+			const start = this.position;
+			this.position++;
+			try {
+				const expression = this.parseOr();
+				this.expect(')');
+				return expression;
+			} catch (error) {
+				if (!(error instanceof PropertyFilterError)) {
+					throw error;
+				}
+				this.position = start;
+			}
 		}
 
 		return { kind: 'comparison', comparison: this.parseComparison() };
 	}
 
 	private parseComparison(): Comparison {
-		this.skipWhitespace();
-		this.expect('{');
-		const propertyName = this.readUntil('}').trim();
-		if (!propertyName || /\s|:/.test(propertyName)) {
-			throw this.error('Property names must not contain whitespace or colons.');
-		}
-		this.expect('}');
-
-		const operator = this.readOperator();
-		const literal = this.readLiteral();
-		return { propertyName, operator, literal };
+		const left = this.parseValueExpression();
+		const operator = this.readComparisonOperator();
+		const right = this.parseValueExpression();
+		return { left, operator, right };
 	}
 
-	private readOperator(): ComparisonOperator {
-		this.skipWhitespace();
-		for (const operator of ['!=', '<=', '>=', '=', '<', '>'] as const) {
-			if (this.source.startsWith(operator, this.position)) {
-				this.position += operator.length;
-				return operator;
+	private parseValueExpression(): ValueExpression {
+		let expression = this.parseMultiplicative();
+		while (true) {
+			const operator = this.consumeOperator('+') || this.consumeOperator('-');
+			if (!operator) {
+				return expression;
 			}
+			expression = {
+				kind: 'binary',
+				operator,
+				left: expression,
+				right: this.parseMultiplicative(),
+			};
 		}
-		throw this.error('Expected one of =, !=, <, >, <=, or >=.');
 	}
 
-	private readLiteral(): Literal {
+	private parseMultiplicative(): ValueExpression {
+		let expression = this.parseValuePrimary();
+		while (true) {
+			const operator = this.consumeOperator('*') || this.consumeOperator('/');
+			if (!operator) {
+				return expression;
+			}
+			expression = {
+				kind: 'binary',
+				operator,
+				left: expression,
+				right: this.parseValuePrimary(),
+			};
+		}
+	}
+
+	private parseValuePrimary(): ValueExpression {
 		this.skipWhitespace();
 		const character = this.source[this.position];
+		if (character === '(') {
+			this.position++;
+			const expression = this.parseValueExpression();
+			this.expect(')');
+			return expression;
+		}
+		if (character === '{') {
+			return { kind: 'property', name: this.readPropertyName() };
+		}
 		if (character === '"' || character === "'") {
 			return { kind: 'string', value: this.readQuotedString(character) };
 		}
@@ -123,7 +153,34 @@ class PropertyFilterParser {
 			return { kind: 'number', value: Number(number) };
 		}
 
-		throw this.error('Expected a quoted string or number.');
+		throw this.error('Expected a number, string, property, or opening parenthesis.');
+	}
+
+	private readComparisonOperator(): ComparisonOperator {
+		this.skipWhitespace();
+		for (const operator of ['!=', '<=', '>=', '=', '<', '>'] as const) {
+			if (this.source.startsWith(operator, this.position)) {
+				this.position += operator.length;
+				return operator;
+			}
+		}
+		throw this.error('Expected one of =, !=, <, >, <=, or >=.');
+	}
+
+	private readPropertyName(): string {
+		this.expect('{');
+		const end = this.source.indexOf('}', this.position);
+		if (end < 0) {
+			throw this.error("Expected '}'.");
+		}
+
+		const name = this.source.slice(this.position, end).trim();
+		this.position = end;
+		this.expect('}');
+		if (!name || /\s|:/.test(name)) {
+			throw this.error('Property names must not contain whitespace or colons.');
+		}
+		return name;
 	}
 
 	private readQuotedString(quote: string): string {
@@ -148,22 +205,13 @@ class PropertyFilterParser {
 		throw this.error('Unterminated quoted string.');
 	}
 
-	private readUntil(character: string): string {
-		const start = this.position;
-		const end = this.source.indexOf(character, this.position);
-		if (end < 0) {
-			throw this.error(`Expected '${character}'.`);
-		}
-		this.position = end;
-		return this.source.slice(start, end);
-	}
-
-	private expect(character: string): void {
+	private consumeOperator(operator: '+' | '-' | '*' | '/'): '+' | '-' | '*' | '/' | null {
 		this.skipWhitespace();
-		if (this.source[this.position] !== character) {
-			throw this.error(`Expected '${character}'.`);
+		if (this.source[this.position] !== operator) {
+			return null;
 		}
 		this.position++;
+		return operator;
 	}
 
 	private consume(character: string): boolean {
@@ -173,6 +221,12 @@ class PropertyFilterParser {
 		}
 		this.position++;
 		return true;
+	}
+
+	private expect(character: string): void {
+		if (!this.consume(character)) {
+			throw this.error(`Expected '${character}'.`);
+		}
 	}
 
 	private skipWhitespace(): void {
@@ -198,47 +252,82 @@ function evaluate(expression: FilterExpression, properties: CalloutProperty[]): 
 		return evaluate(expression.left, properties) || evaluate(expression.right, properties);
 	}
 
-	const property = properties.find(
-		(candidate) => candidate.key.toLowerCase() === expression.comparison.propertyName.toLowerCase(),
-	);
-	if (!property) {
-		return false;
-	}
-
-	return compare(property.value, expression.comparison.operator, expression.comparison.literal);
+	const left = evaluateValue(expression.comparison.left, properties);
+	const right = evaluateValue(expression.comparison.right, properties);
+	return compare(left, expression.comparison.operator, right);
 }
 
-function compare(value: string, operator: ComparisonOperator, literal: Literal): boolean {
-	const numericValue = Number(value.trim());
-	const valueIsNumber = value.trim() !== '' && Number.isFinite(numericValue);
-
-	if (literal.kind === 'number') {
-		if (!valueIsNumber) {
-			return false;
-		}
-		return compareNumbers(numericValue, operator, literal.value);
+function evaluateValue(expression: ValueExpression, properties: CalloutProperty[]): EvaluatedValue {
+	if (expression.kind === 'number' || expression.kind === 'string') {
+		return expression.value;
+	}
+	if (expression.kind === 'property') {
+		const property = properties.find(
+			(candidate) => candidate.key.toLowerCase() === expression.name.toLowerCase(),
+		);
+		return property ? normalizeValue(property.value) : null;
 	}
 
+	const left = evaluateValue(expression.left, properties);
+	const right = evaluateValue(expression.right, properties);
+	if (left === null || right === null) {
+		return null;
+	}
+	if (typeof left !== 'number' || typeof right !== 'number') {
+		return null;
+	}
+
+	switch (expression.operator) {
+		case '+':
+			return left + right;
+		case '-':
+			return left - right;
+		case '*':
+			return left * right;
+		case '/':
+			if (right === 0) {
+				throw new PropertyFilterError('Division by zero is not allowed.');
+			}
+			return left / right;
+	}
+}
+
+function normalizeValue(value: string): EvaluatedValue {
+	const trimmed = value.trim();
+	if (!trimmed) {
+		return null;
+	}
+	const number = Number(trimmed);
+	return Number.isFinite(number) ? number : trimmed;
+}
+
+function compare(left: EvaluatedValue, operator: ComparisonOperator, right: EvaluatedValue): boolean {
+	if (left === null || right === null) {
+		return false;
+	}
+	if (typeof left === 'number' && typeof right === 'number') {
+		return compareNumbers(left, operator, right);
+	}
 	if (operator !== '=' && operator !== '!=') {
 		return false;
 	}
-	const equal = value.toLowerCase() === literal.value.toLowerCase();
+	const equal = String(left).toLowerCase() === String(right).toLowerCase();
 	return operator === '=' ? equal : !equal;
 }
 
-function compareNumbers(value: number, operator: ComparisonOperator, literal: number): boolean {
+function compareNumbers(left: number, operator: ComparisonOperator, right: number): boolean {
 	switch (operator) {
 		case '=':
-			return value === literal;
+			return left === right;
 		case '!=':
-			return value !== literal;
+			return left !== right;
 		case '<':
-			return value < literal;
+			return left < right;
 		case '>':
-			return value > literal;
+			return left > right;
 		case '<=':
-			return value <= literal;
+			return left <= right;
 		case '>=':
-			return value >= literal;
+			return left >= right;
 	}
 }
