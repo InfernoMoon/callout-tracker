@@ -19,7 +19,10 @@ export interface CalloutTrackerBlockConfig {
 	search: string;
 	filter: string;
 	summaries: string[];
+	display: CalloutTrackerDisplayMode;
 }
+
+export type CalloutTrackerDisplayMode = 'all' | 'onlySummary' | 'onlyCallouts';
 
 export interface CustomCallout {
 	name: string;

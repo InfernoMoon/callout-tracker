@@ -134,6 +134,36 @@ filter: {status} = "missing"
 summary: sum({cost})
 ```
 
+## Display only the summary
+
+Expected: the summary row is shown, and the callout results are hidden.
+
+```callout-tracker
+callouts: testSum
+display: OnlySummary
+summary: "Total: " + sum({cost}) + "€"
+```
+
+## Display only the callouts
+
+Expected: the callout results are shown, and no summary row is shown.
+
+```callout-tracker
+callouts: testSum
+display: OnlyCallouts
+summary: "This summary is hidden"
+```
+
+## Display everything
+
+Expected: both the summary row and the callout results are shown.
+
+```callout-tracker
+callouts: testSum
+display: All
+summary: "Total: " + sum({cost}) + "€"
+```
+
 ## Multiple summary rows
 
 Expected rows:

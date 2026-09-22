@@ -107,7 +107,19 @@ summary: "Items: " + count()
 ```
 ````
 
-Supported functions are `count()`, `sum(expression)`, `avg(expression)`, `max(expression)`, and `min(expression)`. Properties can only be used inside these functions. Numeric arithmetic is supported inside aggregate functions, for example `sum({cost} / 2 + 4.5)`. Missing or non-numeric values are ignored by numeric functions; if no numeric values remain, they return `0`.
+Supported functions are `count()`, `sum(expression)`, `avg(expression)`, `max(expression)`, and `min(expression)`. Properties can only be used inside these functions. Numeric arithmetic is supported inside aggregate functions, for example `sum({cost} / 2 + 4.5)`. Missing or non-numeric values are ignored by numeric functions; if no numeric values remain, they return `0`. `count()` counts every callout that remains after searching and filtering, even when it does not have the referenced property.
+
+Use `display:` to choose what the block renders. It defaults to `All`:
+
+````markdown
+```callout-tracker
+callouts: cost
+display: OnlySummary
+summary: "Total: " + sum({cost}) + "€"
+```
+````
+
+The available values are `All`, `OnlySummary`, and `OnlyCallouts`.
 
 ## API for AI agents and integrations
 

@@ -13,7 +13,12 @@ import { findCallouts } from './callout-scanner';
 import { createPropertyFilter, PropertyFilterError } from './property-filter';
 import { evaluateSummary, SummaryExpressionError } from './summary-evaluator';
 import type CalloutTrackerPlugin from './main';
-import type { CalloutEntry, CalloutTrackerBlockConfig, CustomCallout } from './types';
+import type {
+	CalloutEntry,
+	CalloutTrackerBlockConfig,
+	CalloutTrackerDisplayMode,
+	CustomCallout,
+} from './types';
 
 const DEFAULT_CALLOUT_TYPES = ['idea', 'note', 'todo'];
 
@@ -43,6 +48,7 @@ function parseBlockConfig(
 		search: '',
 		filter: '',
 		summaries: [],
+		display: 'all',
 	};
 
 	for (const rawLine of source.split('\n')) {
@@ -72,6 +78,8 @@ function parseBlockConfig(
 			if (value) {
 				config.summaries.push(value);
 			}
+		} else if (key === 'display') {
+			config.display = parseDisplayMode(value);
 		}
 	}
 
@@ -98,11 +106,22 @@ async function renderCalloutTracker(
 		);
 		const filterPredicate = createPropertyFilter(config.filter);
 		const matchingEntries = filterEntries(entries, config.search, filterPredicate);
-		for (const summary of config.summaries) {
-			container.createDiv({
-				cls: 'callout-tracker__summary',
-				text: evaluateSummary(summary, matchingEntries),
-			});
+		if (config.display !== 'onlyCallouts') {
+			for (const summary of config.summaries) {
+				container.createDiv({
+					cls: 'callout-tracker__summary',
+					text: evaluateSummary(summary, matchingEntries),
+				});
+			}
+		}
+		if (config.display === 'onlySummary') {
+			if (config.summaries.length === 0) {
+				container.createEl('p', {
+					text: 'No summaries configured.',
+					cls: 'callout-tracker__empty',
+				});
+			}
+			return;
 		}
 		if (matchingEntries.length === 0) {
 			container.createEl('p', {
@@ -139,6 +158,17 @@ async function renderCalloutTracker(
 		});
 		new Notice(message);
 	}
+}
+
+function parseDisplayMode(value: string): CalloutTrackerDisplayMode {
+	const normalized = value.toLowerCase().replace(/[\s_-]/g, '');
+	if (normalized === 'onlysummary' || normalized === 'onlysummery') {
+		return 'onlySummary';
+	}
+	if (normalized === 'onlycallouts') {
+		return 'onlyCallouts';
+	}
+	return 'all';
 }
 
 function filterEntries(
