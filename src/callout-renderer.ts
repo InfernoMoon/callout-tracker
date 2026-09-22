@@ -7,9 +7,10 @@ import {
 	Notice,
 	setIcon,
 } from 'obsidian';
-import { parseCalloutProperties, renderCalloutProperties } from './callout-properties';
+import { renderCalloutProperties } from './callout-properties';
 import { applyCalloutStyle, findCalloutStyle, normalizeIconName } from './callout-styles';
 import { findCallouts } from './callout-scanner';
+import { createPropertyFilter, PropertyFilterError } from './property-filter';
 import type CalloutTrackerPlugin from './main';
 import type { CalloutEntry, CalloutTrackerBlockConfig, CustomCallout } from './types';
 
@@ -39,6 +40,7 @@ function parseBlockConfig(
 		calloutTypes: [...DEFAULT_CALLOUT_TYPES],
 		rootFolder: defaultRootFolder,
 		search: '',
+		filter: '',
 	};
 
 	for (const rawLine of source.split('\n')) {
@@ -62,6 +64,8 @@ function parseBlockConfig(
 			config.rootFolder = value;
 		} else if (key === 'search') {
 			config.search = value;
+		} else if (key === 'filter') {
+			config.filter = value;
 		}
 	}
 
@@ -86,7 +90,8 @@ async function renderCalloutTracker(
 			config.calloutTypes,
 			ignoredPrefixes,
 		);
-		const matchingEntries = filterEntries(entries, config.search);
+		const filterPredicate = createPropertyFilter(config.filter);
+		const matchingEntries = filterEntries(entries, config.search, filterPredicate);
 		if (matchingEntries.length === 0) {
 			container.createEl('p', {
 				text: 'No matching callouts found.',
@@ -110,24 +115,35 @@ async function renderCalloutTracker(
 			}
 		}
 	} catch (error) {
-			console.error('Callout Tracker failed to scan the vault.', error);
-			container.createEl('p', {
-				text: 'Callout tracker could not scan the vault.',
-				cls: 'callout-tracker__error',
-			});
-			new Notice('Callout tracker could not scan the vault.');
+		const message = error instanceof PropertyFilterError
+			? `Invalid filter: ${error.message}`
+			: 'Callout tracker could not scan the vault.';
+		console.error('Callout Tracker failed to scan the vault.', error);
+		container.createEl('p', {
+			text: message,
+			cls: 'callout-tracker__error',
+		});
+		new Notice(message);
 	}
 }
 
-function filterEntries(entries: CalloutEntry[], search: string): CalloutEntry[] {
+function filterEntries(
+	entries: CalloutEntry[],
+	search: string,
+	filterPredicate: ReturnType<typeof createPropertyFilter>,
+): CalloutEntry[] {
 	const query = search.trim().toLowerCase();
-	if (!query) {
-		return entries;
-	}
-
 	return entries.filter((entry) =>
-		`${entry.title}\n${entry.body}`.toLowerCase().includes(query),
+		(!query || getSearchableText(entry).includes(query)) &&
+		(!filterPredicate || filterPredicate(entry.properties)),
 	);
+}
+
+function getSearchableText(entry: CalloutEntry): string {
+	const properties = entry.properties
+		.map((property) => `${property.key}: ${property.value}`)
+		.join('\n');
+	return `${entry.title}\n${properties}\n${entry.body}`.toLowerCase();
 }
 
 function renderEntry(
@@ -175,19 +191,15 @@ function renderEntry(
 	});
 
 	const contentEl = item.createDiv({ cls: 'callout-content' });
-	const propertyBlock = parseCalloutProperties(entry.body);
-	if (propertyBlock) {
-		renderCalloutProperties(contentEl, propertyBlock.properties);
+	if (entry.properties.length > 0) {
+		renderCalloutProperties(contentEl, entry.properties);
 	}
 
-	const body = propertyBlock
-		? propertyBlock.remainingLines.join('\n').trim()
-		: entry.body;
-	if (body) {
+	if (entry.body) {
 		const bodyEl = contentEl.createDiv({ cls: 'callout-tracker__body' });
 		const child = new MarkdownRenderChild(bodyEl);
 		context.addChild(child);
-		void MarkdownRenderer.render(app, body, bodyEl, entry.filePath, child);
+		void MarkdownRenderer.render(app, entry.body, bodyEl, entry.filePath, child);
 	}
 
 	const callout = findCalloutStyle(customCallouts, entry.type);

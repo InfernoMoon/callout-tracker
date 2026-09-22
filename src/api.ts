@@ -1,6 +1,7 @@
 import { findCallouts } from './callout-scanner';
+import { createPropertyFilter } from './property-filter';
 import type CalloutTrackerPlugin from './main';
-import type { CalloutEntry } from './types';
+import type { CalloutEntry, CalloutProperty } from './types';
 
 const DEFAULT_CALLOUT_TYPES = ['idea', 'note', 'todo'];
 
@@ -8,6 +9,7 @@ export interface CalloutSearchOptions {
 	callouts?: string[] | string;
 	rootFolder?: string;
 	search?: string;
+	filter?: string;
 }
 
 export interface CalloutSearchResult {
@@ -17,6 +19,7 @@ export interface CalloutSearchResult {
 	type: string;
 	title: string;
 	body: string;
+	properties: CalloutProperty[];
 }
 
 export interface CalloutTrackerApi {
@@ -37,7 +40,7 @@ export function createCalloutTrackerApi(plugin: CalloutTrackerPlugin): CalloutTr
 			);
 			const typeOrder = new Map(calloutTypes.map((type, index) => [type, index]));
 
-			return filterEntries(entries, options.search)
+			return filterEntries(entries, options.search, createPropertyFilter(options.filter))
 				.sort(
 					(first, second) =>
 						(typeOrder.get(first.type) ?? Number.MAX_SAFE_INTEGER) -
@@ -57,15 +60,23 @@ function normalizeCalloutTypes(value: string[] | string | undefined): string[] {
 	return types.length > 0 ? [...new Set(types)] : [...DEFAULT_CALLOUT_TYPES];
 }
 
-function filterEntries(entries: CalloutEntry[], search: string | undefined): CalloutEntry[] {
+function filterEntries(
+	entries: CalloutEntry[],
+	search: string | undefined,
+	filterPredicate: ReturnType<typeof createPropertyFilter>,
+): CalloutEntry[] {
 	const query = search?.trim().toLowerCase() ?? '';
-	if (!query) {
-		return entries;
-	}
-
 	return entries.filter((entry) =>
-		`${entry.fileName}\n${entry.title}\n${entry.body}`.toLowerCase().includes(query),
+		(!query || getSearchableText(entry).includes(query)) &&
+		(!filterPredicate || filterPredicate(entry.properties)),
 	);
+}
+
+function getSearchableText(entry: CalloutEntry): string {
+	const properties = entry.properties
+		.map((property) => `${property.key}: ${property.value}`)
+		.join('\n');
+	return `${entry.fileName}\n${entry.title}\n${properties}\n${entry.body}`.toLowerCase();
 }
 
 function toSearchResult(entry: CalloutEntry): CalloutSearchResult {
@@ -76,5 +87,6 @@ function toSearchResult(entry: CalloutEntry): CalloutSearchResult {
 		type: entry.type,
 		title: entry.title,
 		body: entry.body,
+		properties: entry.properties,
 	};
 }

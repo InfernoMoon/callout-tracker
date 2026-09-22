@@ -8,7 +8,7 @@ The overview is grouped by callout type, searchable, and linked back to the sour
 
 ![Callout Tracker Overview](assets/overview.gif)
 
-## Usage
+## Basic usage
 
 Use Callouts in your notes to mark important thoughts, tasks, and suggestions.
 ```
@@ -45,7 +45,7 @@ The settings show a live preview, so you can see how the callout will look while
 
 ## Callout properties
 
-Add generic properties directly below a callout header using `key:: value` syntax:
+Properties let you attach structured values to a callout. Write them directly below the callout header using `key:: value` syntax. Property names cannot contain spaces:
 
 ```markdown
 > [!cost] Buy tickets for concert
@@ -59,6 +59,21 @@ Add generic properties directly below a callout header using `key:: value` synta
 
 The property section ends at the first line that is not a property. A blank callout line can be used for readability, but it is not required.
 
+### Filter
+
+Callout Tracker displays these properties in the rendered callout and in tracker results. You can also use them with `filter:`. Put the property name in braces and compare it with a string or number:
+
+````markdown
+```callout-tracker
+callouts: cost
+filter: {cost} > 40
+```
+````
+
+This shows only callouts whose numeric `cost::` property is greater than 40. For string values, use `=` or `!=`. Numeric values support all comparison operators. Use `&`, `|`, and parentheses to combine conditions.
+
+`filter:` supports `{property}` references, quoted strings, numbers, and the comparison operators `=`, `!=`, `<`, `>`, `<=`, and `>=`. Missing properties do not match. `&` means all conditions must match, `|` means either condition may match, and parentheses can group conditions.
+
 ## API for AI agents and integrations
 
 Callout Tracker exposes a local API on the loaded plugin instance. The `search` method returns JSON-friendly results with the callout type, title, text, and file path. Markdown results include a 1-based line number; Canvas results open the `.canvas` file without a line number.
@@ -70,6 +85,7 @@ const tracker = Object.values(app.plugins.plugins)
 await tracker.api.search({
     callouts: ['hook', 'clue'],
     search: 'dragon',
+    filter: '{status} = "planned"',
 });
 ```
 

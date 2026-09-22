@@ -1,4 +1,5 @@
 import type { App, TFile } from 'obsidian';
+import { parseCalloutProperties } from './callout-properties';
 import type { CalloutEntry } from './types';
 
 interface ParsedCalloutHeader {
@@ -64,12 +65,17 @@ function scanTextCallouts(
 			nextLine++;
 		}
 
+		const rawBody = bodyLines.join('\n').trim();
+		const propertyBlock = parseCalloutProperties(rawBody);
 		entries.push({
 			fileName: file.basename,
 			filePath: file.path,
 			...(includeLineNumbers ? { startLine: lineNumber } : {}),
 			title: header.title,
-			body: bodyLines.join('\n').trim(),
+			body: propertyBlock
+				? propertyBlock.remainingLines.join('\n').trim()
+				: rawBody,
+			properties: propertyBlock?.properties ?? [],
 			type: header.type,
 		});
 

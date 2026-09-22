@@ -10,7 +10,8 @@ import type CalloutTrackerPlugin from './main';
 
 type TrackerOption = {
 	kind: 'setting';
-	key: 'callouts' | 'rootfolder' | 'search';
+	key: string;
+	label: string;
 	description: string;
 };
 
@@ -22,9 +23,10 @@ type CalloutOption = {
 type Suggestion = TrackerOption | CalloutOption;
 
 const OPTIONS: TrackerOption[] = [
-	{ kind: 'setting', key: 'callouts', description: 'Callout types to include' },
-	{ kind: 'setting', key: 'rootfolder', description: 'Folder to search' },
-	{ kind: 'setting', key: 'search', description: 'Text to find in callout titles or bodies' },
+	{ kind: 'setting', key: 'callouts', label: 'callouts', description: 'Callout types to include' },
+	{ kind: 'setting', key: 'rootfolder', label: 'rootfolder', description: 'Folder to search' },
+	{ kind: 'setting', key: 'search', label: 'search', description: 'Text to find in callout titles or bodies' },
+	{ kind: 'setting', key: 'filter', label: 'filter', description: 'Filter by callout properties' },
 ];
 
 export function registerCalloutTrackerEditorSuggest(
@@ -90,7 +92,7 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			return;
 		}
 
-		element.createDiv({ text: `${value.key}:` });
+		element.createDiv({ text: `${value.label}:` });
 		element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
 	}
 
@@ -100,7 +102,7 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			return;
 		}
 
-		const replacement = value.kind === 'callout' ? `${value.name}, ` : `${value.key}: `;
+		const replacement = value.kind === 'callout' ? `${value.name}, ` : `${value.label}: `;
 		context.editor.replaceRange(replacement, context.start, context.end);
 		context.editor.setCursor({
 			line: context.start.line,

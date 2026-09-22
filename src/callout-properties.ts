@@ -1,7 +1,4 @@
-export interface CalloutProperty {
-	key: string;
-	value: string;
-}
+import type { CalloutProperty } from './types';
 
 export interface ParsedCalloutProperties {
 	properties: CalloutProperty[];
