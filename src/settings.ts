@@ -93,37 +93,64 @@ export class CalloutTrackerSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
+	getSettingDefinitions() {
+		return [
+			{
+				name: 'Default root folder',
+				desc: 'Search this folder and its subfolders by default. Leave empty to search the entire vault.',
+				render: (setting: Setting): void => {
+					addRootFolderControl(setting, this.plugin);
+				},
+			},
+			{
+				name: 'Ignore prefixes',
+				desc: 'Skip files and folders whose names start with one of these prefixes.',
+				render: (setting: Setting): void => {
+					addIgnoredPrefixesControl(setting, this.plugin);
+				},
+			},
+			{
+				name: 'Custom callouts',
+				desc: 'Define the appearance of native Obsidian callouts by name.',
+				render: (setting: Setting): void => {
+					setting.addButton((button) =>
+						button
+							.setButtonText('Add custom callout')
+							.setCta()
+							.onClick(async () => {
+								this.plugin.settings.customCallouts.push(createDefaultCustomCallout());
+								await this.plugin.saveSettings();
+								this.plugin.updateCalloutStyles();
+								this.refreshSettings();
+							}),
+					);
+
+					const customCalloutsEl = (setting.settingEl.parentElement ?? setting.settingEl).createDiv({
+						cls: 'callout-tracker__custom-callouts',
+					});
+					for (const [index, callout] of this.plugin.settings.customCallouts.entries()) {
+						renderCustomCallout(this.plugin, customCalloutsEl, callout, index, this);
+					}
+				},
+			},
+		];
+	}
+
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		new Setting(containerEl)
+		const rootFolderSetting = new Setting(containerEl)
 			.setName('Default root folder')
 			.setDesc(
 				'Search this folder and its subfolders by default. Leave empty to search the entire vault.',
-			)
-			.addText((text) =>
-				text
-					.setPlaceholder('Vault-wide search')
-					.setValue(this.plugin.settings.rootFolder)
-					.onChange(async (value) => {
-						this.plugin.settings.rootFolder = value.trim();
-						await this.plugin.saveSettings();
-					}),
 			);
+		addRootFolderControl(rootFolderSetting, this.plugin);
 
-		new Setting(containerEl)
+		const ignoredPrefixesSetting = new Setting(containerEl)
 			.setName('Ignore prefixes')
-			.setDesc('Skip files and folders whose names start with one of these prefixes.')
-			.addText((text) =>
-				text
-					.setPlaceholder('_ , draft')
-					.setValue(this.plugin.settings.ignoredPrefixes.join(', '))
-					.onChange(async (value) => {
-						this.plugin.settings.ignoredPrefixes = parsePrefixList(value);
-						await this.plugin.saveSettings();
-				}),
-			);
+			.setDesc('Skip files and folders whose names start with one of these prefixes.');
+		addIgnoredPrefixesControl(ignoredPrefixesSetting, this.plugin);
 
 		new Setting(containerEl)
 			.setName('Custom callouts')
@@ -136,7 +163,7 @@ export class CalloutTrackerSettingTab extends PluginSettingTab {
 						this.plugin.settings.customCallouts.push(createDefaultCustomCallout());
 						await this.plugin.saveSettings();
 						this.plugin.updateCalloutStyles();
-						this.display();
+						this.refreshSettings();
 					}),
 			);
 
@@ -147,6 +174,39 @@ export class CalloutTrackerSettingTab extends PluginSettingTab {
 			renderCustomCallout(this.plugin, customCalloutsEl, callout, index, this);
 		}
 	}
+
+	refreshSettings(): void {
+		const declarativeTab = this as PluginSettingTab & { update?: () => void };
+		if (typeof declarativeTab.update === 'function') {
+			declarativeTab.update();
+			return;
+		}
+		this.display();
+	}
+}
+
+function addRootFolderControl(setting: Setting, plugin: CalloutTrackerPlugin): void {
+	setting.addText((text) =>
+		text
+			.setPlaceholder('Vault-wide search')
+			.setValue(plugin.settings.rootFolder)
+			.onChange(async (value) => {
+				plugin.settings.rootFolder = value.trim();
+				await plugin.saveSettings();
+			}),
+	);
+}
+
+function addIgnoredPrefixesControl(setting: Setting, plugin: CalloutTrackerPlugin): void {
+	setting.addText((text) =>
+		text
+			.setPlaceholder('_ , draft')
+			.setValue(plugin.settings.ignoredPrefixes.join(', '))
+			.onChange(async (value) => {
+				plugin.settings.ignoredPrefixes = parsePrefixList(value);
+				await plugin.saveSettings();
+			}),
+	);
 }
 
 function parsePrefixList(value: string): string[] {
@@ -293,7 +353,7 @@ function renderCustomCallout(
 				plugin.settings.customCallouts.splice(index, 1);
 				await plugin.saveSettings();
 				plugin.updateCalloutStyles();
-				settingTab.display();
+				settingTab.refreshSettings();
 			}),
 	);
 
