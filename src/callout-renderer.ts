@@ -11,6 +11,7 @@ import { renderCalloutProperties } from './callout-properties';
 import { applyCalloutStyle, findCalloutStyle, normalizeIconName } from './callout-styles';
 import { findCallouts } from './callout-scanner';
 import { createPropertyFilter, PropertyFilterError } from './property-filter';
+import { evaluateSummary, SummaryExpressionError } from './summary-evaluator';
 import type CalloutTrackerPlugin from './main';
 import type { CalloutEntry, CalloutTrackerBlockConfig, CustomCallout } from './types';
 
@@ -41,6 +42,7 @@ function parseBlockConfig(
 		rootFolder: defaultRootFolder,
 		search: '',
 		filter: '',
+		summary: '',
 	};
 
 	for (const rawLine of source.split('\n')) {
@@ -66,6 +68,8 @@ function parseBlockConfig(
 			config.search = value;
 		} else if (key === 'filter') {
 			config.filter = value;
+		} else if (key === 'summary') {
+			config.summary = value;
 		}
 	}
 
@@ -92,6 +96,12 @@ async function renderCalloutTracker(
 		);
 		const filterPredicate = createPropertyFilter(config.filter);
 		const matchingEntries = filterEntries(entries, config.search, filterPredicate);
+		if (config.summary.trim()) {
+			container.createDiv({
+				cls: 'callout-tracker__summary',
+				text: evaluateSummary(config.summary, matchingEntries),
+			});
+		}
 		if (matchingEntries.length === 0) {
 			container.createEl('p', {
 				text: 'No matching callouts found.',
@@ -117,7 +127,9 @@ async function renderCalloutTracker(
 	} catch (error) {
 		const message = error instanceof PropertyFilterError
 			? `Invalid filter: ${error.message}`
-			: 'Callout tracker could not scan the vault.';
+			: error instanceof SummaryExpressionError
+				? `Invalid summary: ${error.message}`
+				: 'Callout tracker could not scan the vault.';
 		console.error('Callout Tracker failed to scan the vault.', error);
 		container.createEl('p', {
 			text: message,

@@ -74,6 +74,19 @@ This shows only callouts whose numeric `cost::` property is greater than 40. For
 
 `filter:` supports `{property}` references, quoted strings, numbers, and the comparison operators `=`, `!=`, `<`, `>`, `<=`, and `>=`. Missing properties do not match. `&` means all conditions must match, `|` means either condition may match, and parentheses can group conditions.
 
+### Summary
+
+Use `summary:` to calculate and display a value above the matching callouts. The calculation runs after `search:` and `filter:` have selected the callouts:
+
+````markdown
+```callout-tracker
+callouts: cost
+summary: "Total: " + sum({cost}) + "€ | Average: " + avg({cost}) + "€"
+```
+````
+
+Supported functions are `count()`, `sum(expression)`, `avg(expression)`, `max(expression)`, and `min(expression)`. Properties can only be used inside these functions. Numeric arithmetic is supported inside aggregate functions, for example `sum({cost} / 2 + 4.5)`. Missing or non-numeric values are ignored by numeric functions; if no numeric values remain, they return `0`.
+
 ## API for AI agents and integrations
 
 Callout Tracker exposes a local API on the loaded plugin instance. The `search` method returns JSON-friendly results with the callout type, title, text, and file path. Markdown results include a 1-based line number; Canvas results open the `.canvas` file without a line number.

@@ -27,6 +27,7 @@ const OPTIONS: TrackerOption[] = [
 	{ kind: 'setting', key: 'rootfolder', label: 'rootfolder', description: 'Folder to search' },
 	{ kind: 'setting', key: 'search', label: 'search', description: 'Text to find in callout titles or bodies' },
 	{ kind: 'setting', key: 'filter', label: 'filter', description: 'Filter by callout properties' },
+	{ kind: 'setting', key: 'summary', label: 'summary', description: 'Calculate a value from matching callouts' },
 ];
 
 export function registerCalloutTrackerEditorSuggest(
