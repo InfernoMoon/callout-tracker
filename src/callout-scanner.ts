@@ -15,9 +15,10 @@ export async function findCallouts(
 	const wantedTypes = new Set(calloutTypes.map((type) => type.toLowerCase()));
 	const normalizedRoot = normalizeRootFolder(rootFolder);
 	const files = app.vault
-		.getMarkdownFiles()
+		.getFiles()
 		.filter(
 			(file) =>
+				isSupportedFile(file) &&
 				isInRootFolder(file, normalizedRoot) &&
 				!startsWithPrefix(file.basename, ignoredPrefixes) &&
 				!hasIgnoredFolder(file, ignoredPrefixes),
@@ -26,40 +27,89 @@ export async function findCallouts(
 	const entries: CalloutEntry[] = [];
 	for (const file of files) {
 		const content = await app.vault.cachedRead(file);
-		const lines = content.replace(/\r\n?/g, '\n').split('\n');
-
-		for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
-			const header = parseCalloutHeader(lines[lineNumber] ?? '');
-			if (!header) {
-				continue;
-			}
-
-			const type = header.type;
-			if (!type || !wantedTypes.has(type)) {
-				continue;
-			}
-
-			const bodyLines: string[] = [];
-			let nextLine = lineNumber + 1;
-			while (nextLine < lines.length && isQuoteLine(lines[nextLine] ?? '')) {
-				bodyLines.push(stripQuoteMarker(lines[nextLine] ?? ''));
-				nextLine++;
-			}
-
-			entries.push({
-				fileName: file.basename,
-				filePath: file.path,
-				startLine: lineNumber,
-				title: header.title,
-				body: bodyLines.join('\n').trim(),
-				type,
-			});
-
-			lineNumber = nextLine - 1;
+		if (file.extension.toLowerCase() === 'canvas') {
+			entries.push(...scanCanvasCallouts(file, content, wantedTypes));
+		} else {
+			entries.push(...scanTextCallouts(file, content, wantedTypes, true));
 		}
 	}
 
 	return entries;
+}
+
+function isSupportedFile(file: TFile): boolean {
+	const extension = file.extension.toLowerCase();
+	return extension === 'md' || extension === 'canvas';
+}
+
+function scanTextCallouts(
+	file: TFile,
+	content: string,
+	wantedTypes: Set<string>,
+	includeLineNumbers: boolean,
+): CalloutEntry[] {
+	const lines = content.replace(/\r\n?/g, '\n').split('\n');
+	const entries: CalloutEntry[] = [];
+
+	for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
+		const header = parseCalloutHeader(lines[lineNumber] ?? '');
+		if (!header || !wantedTypes.has(header.type)) {
+			continue;
+		}
+
+		const bodyLines: string[] = [];
+		let nextLine = lineNumber + 1;
+		while (nextLine < lines.length && isQuoteLine(lines[nextLine] ?? '')) {
+			bodyLines.push(stripQuoteMarker(lines[nextLine] ?? ''));
+			nextLine++;
+		}
+
+		entries.push({
+			fileName: file.basename,
+			filePath: file.path,
+			...(includeLineNumbers ? { startLine: lineNumber } : {}),
+			title: header.title,
+			body: bodyLines.join('\n').trim(),
+			type: header.type,
+		});
+
+		lineNumber = nextLine - 1;
+	}
+
+	return entries;
+}
+
+function scanCanvasCallouts(
+	file: TFile,
+	content: string,
+	wantedTypes: Set<string>,
+): CalloutEntry[] {
+	let canvas: unknown;
+	try {
+		canvas = JSON.parse(content);
+	} catch (error) {
+		console.warn(`Callout Tracker could not parse canvas file: ${file.path}`, error);
+		return [];
+	}
+
+	if (!isRecord(canvas) || !Array.isArray(canvas.nodes)) {
+		return [];
+	}
+
+	const entries: CalloutEntry[] = [];
+	for (const node of canvas.nodes) {
+		if (!isRecord(node) || node.type !== 'text' || typeof node.text !== 'string') {
+			continue;
+		}
+
+		entries.push(...scanTextCallouts(file, node.text, wantedTypes, false));
+	}
+
+	return entries;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
 }
 
 function isInRootFolder(file: TFile, rootFolder: string): boolean {

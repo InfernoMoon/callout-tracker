@@ -13,7 +13,7 @@ export interface CalloutSearchOptions {
 export interface CalloutSearchResult {
 	fileName: string;
 	filePath: string;
-	line: number;
+	line?: number;
 	type: string;
 	title: string;
 	body: string;
@@ -72,7 +72,7 @@ function toSearchResult(entry: CalloutEntry): CalloutSearchResult {
 	return {
 		fileName: entry.fileName,
 		filePath: entry.filePath,
-		line: entry.startLine + 1,
+		...(entry.startLine === undefined ? {} : { line: entry.startLine + 1 }),
 		type: entry.type,
 		title: entry.title,
 		body: entry.body,

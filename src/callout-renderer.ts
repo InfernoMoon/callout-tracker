@@ -153,7 +153,10 @@ function renderEntry(
 	});
 
 	const sourceLink = titleEl.createEl('a', {
-		text: `${entry.fileName} · line ${entry.startLine + 1}`,
+		text:
+			entry.startLine === undefined
+				? entry.fileName
+				: `${entry.fileName} · line ${entry.startLine + 1}`,
 		cls: 'callout-tracker__source',
 	});
 	sourceLink.href = '#';
@@ -197,6 +200,10 @@ async function openCallout(
 	sourcePath: string,
 ): Promise<void> {
 	await app.workspace.openLinkText(entry.filePath, sourcePath, false);
+	if (entry.startLine === undefined) {
+		return;
+	}
+
 	const view = app.workspace.getActiveViewOfType(MarkdownView);
 	if (!view || view.file?.path !== entry.filePath) {
 		return;

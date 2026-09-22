@@ -4,7 +4,7 @@ Callout Tracker helps you stay organized in a large vault by collecting importan
 
 Instead of interrupting your writing to maintain a separate task list or idea document, leave callouts where they naturally belong in your notes. Mark a thought as an `idea`, a task as a `todo`, or a useful suggestion as a custom callout such as `note` or `warning`. Callout Tracker then lets you review those items together, find what still needs to be done, revisit suggestions from your notes, and develop ideas that need more attention.
 
-The overview is grouped by callout type, searchable, and linked back to the exact note and line where each callout appears. This makes it easier to turn scattered thoughts across your vault into an organized workflow. It works locally in your vault and does not use network services.
+The overview is grouped by callout type, searchable, and linked back to the source note or Canvas file where each callout appears. This makes it easier to turn scattered thoughts across your vault into an organized workflow. It works locally in your vault and does not use network services.
 
 ![Callout Tracker Overview](assets/overview.gif)
 
@@ -45,7 +45,7 @@ The settings show a live preview, so you can see how the callout will look while
 
 ## API for AI agents and integrations
 
-Callout Tracker exposes a local API on the loaded plugin instance. The `search` method returns JSON-friendly results with the callout type, title, text, file path, and 1-based line number.
+Callout Tracker exposes a local API on the loaded plugin instance. The `search` method returns JSON-friendly results with the callout type, title, text, and file path. Markdown results include a 1-based line number; Canvas results open the `.canvas` file without a line number.
 
 ```ts
 const tracker = Object.values(app.plugins.plugins)
