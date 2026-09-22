@@ -83,3 +83,32 @@
 .callout-tracker__custom-callout-fields {
 	padding-top: 0.25em;
 }
+
+.callout .callout-properties {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35em 0.5em;
+	margin: 0.65em 0 0.8em;
+	padding: 0.55em 0;
+	border-top: 1px solid var(--background-modifier-border);
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-small);
+}
+
+.callout .callout-property {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 0.35em;
+	padding: 0.2em 0.5em;
+	border-radius: var(--radius-s);
+	background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.callout .callout-property-key {
+	color: var(--text-muted);
+	font-weight: var(--font-semibold);
+}
+
+.callout .callout-property-value {
+	color: inherit;
+}

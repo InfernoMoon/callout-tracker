@@ -1,5 +1,6 @@
 import { MarkdownView } from 'obsidian';
 import type { App } from 'obsidian';
+import { parseCalloutProperties, renderCalloutProperties } from './callout-properties';
 import type { CustomCallout } from './types';
 
 export class CalloutStyleManager {
@@ -21,6 +22,9 @@ export class CalloutStyleManager {
 			);
 			if (callout) {
 				applyCalloutStyle(element, callout);
+			}
+			if (!element.closest('.callout-tracker')) {
+				applyCalloutProperties(element);
 			}
 		}
 	}
@@ -80,6 +84,31 @@ export function applyCalloutStyle(element: HTMLElement, callout: CustomCallout):
 	} else {
 		setDynamicCssProp(element, '--callout-icon', '');
 	}
+}
+
+function applyCalloutProperties(element: HTMLElement): void {
+	const content = element.querySelector<HTMLElement>(':scope > .callout-content');
+	const firstChild = content?.firstElementChild;
+	if (!content || !firstChild || firstChild.classList.contains('callout-properties')) {
+		return;
+	}
+
+	const propertyBlock = parseCalloutProperties(
+		(firstChild as HTMLElement).innerText ?? firstChild.textContent ?? '',
+	);
+	if (!propertyBlock) {
+		return;
+	}
+
+	const propertyContainer = renderCalloutProperties(content, propertyBlock.properties);
+	content.insertBefore(propertyContainer, firstChild);
+	if (propertyBlock.remainingLines.length > 0) {
+		const tagName = firstChild.tagName.toLowerCase() as keyof HTMLElementTagNameMap;
+		const remainingContent = content.createEl(tagName);
+		remainingContent.textContent = propertyBlock.remainingLines.join('\n');
+		content.insertBefore(remainingContent, firstChild);
+	}
+	firstChild.remove();
 }
 
 function setDynamicCssProp(element: HTMLElement, property: string, value: string): void {

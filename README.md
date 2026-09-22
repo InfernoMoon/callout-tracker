@@ -43,6 +43,22 @@ The settings show a live preview, so you can see how the callout will look while
 
 ![Callout Settings](assets/callout-settings.png)
 
+## Callout properties
+
+Add generic properties directly below a callout header using `key:: value` syntax:
+
+```markdown
+> [!cost] Buy tickets for concert
+> cost:: 46
+> date:: 2026-09-22
+> status:: planned
+> attendees:: me, Mike
+>
+> For my favorite band.
+```
+
+The property section ends at the first line that is not a property. A blank callout line can be used for readability, but it is not required.
+
 ## API for AI agents and integrations
 
 Callout Tracker exposes a local API on the loaded plugin instance. The `search` method returns JSON-friendly results with the callout type, title, text, and file path. Markdown results include a 1-based line number; Canvas results open the `.canvas` file without a line number.

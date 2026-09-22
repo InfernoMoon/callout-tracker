@@ -7,6 +7,7 @@ import {
 	Notice,
 	setIcon,
 } from 'obsidian';
+import { parseCalloutProperties, renderCalloutProperties } from './callout-properties';
 import { applyCalloutStyle, findCalloutStyle, normalizeIconName } from './callout-styles';
 import { findCallouts } from './callout-scanner';
 import type CalloutTrackerPlugin from './main';
@@ -174,11 +175,19 @@ function renderEntry(
 	});
 
 	const contentEl = item.createDiv({ cls: 'callout-content' });
-	if (entry.body) {
+	const propertyBlock = parseCalloutProperties(entry.body);
+	if (propertyBlock) {
+		renderCalloutProperties(contentEl, propertyBlock.properties);
+	}
+
+	const body = propertyBlock
+		? propertyBlock.remainingLines.join('\n').trim()
+		: entry.body;
+	if (body) {
 		const bodyEl = contentEl.createDiv({ cls: 'callout-tracker__body' });
 		const child = new MarkdownRenderChild(bodyEl);
 		context.addChild(child);
-		void MarkdownRenderer.render(app, entry.body, bodyEl, entry.filePath, child);
+		void MarkdownRenderer.render(app, body, bodyEl, entry.filePath, child);
 	}
 
 	const callout = findCalloutStyle(customCallouts, entry.type);
