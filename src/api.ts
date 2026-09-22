@@ -1,5 +1,6 @@
 import { findCallouts } from './callout-scanner';
 import { createPropertyFilter } from './property-filter';
+import { evaluateSummary } from './summary-evaluator';
 import type CalloutTrackerPlugin from './main';
 import type { CalloutEntry, CalloutProperty } from './types';
 
@@ -12,6 +13,10 @@ export interface CalloutSearchOptions {
 	filter?: string;
 }
 
+export interface CalloutSummaryOptions extends CalloutSearchOptions {
+	summary: string;
+}
+
 export interface CalloutSearchResult {
 	fileName: string;
 	filePath: string;
@@ -22,33 +27,50 @@ export interface CalloutSearchResult {
 	properties: CalloutProperty[];
 }
 
+export interface CalloutSummaryResult {
+	value: string;
+	callouts: CalloutSearchResult[];
+}
+
 export interface CalloutTrackerApi {
 	test(): string;
 	search(options?: CalloutSearchOptions): Promise<CalloutSearchResult[]>;
+	summarize(options: CalloutSummaryOptions): Promise<CalloutSummaryResult>;
 }
 
 export function createCalloutTrackerApi(plugin: CalloutTrackerPlugin): CalloutTrackerApi {
 	return {
 		test: () => 'Haha the test worked!',
-		search: async (options = {}) => {
-			const calloutTypes = normalizeCalloutTypes(options.callouts);
-			const entries = await findCallouts(
-				plugin.app,
-				options.rootFolder ?? plugin.settings.rootFolder,
-				calloutTypes,
-				plugin.settings.ignoredPrefixes,
-			);
-			const typeOrder = new Map(calloutTypes.map((type, index) => [type, index]));
-
-			return filterEntries(entries, options.search, createPropertyFilter(options.filter))
-				.sort(
-					(first, second) =>
-						(typeOrder.get(first.type) ?? Number.MAX_SAFE_INTEGER) -
-						(typeOrder.get(second.type) ?? Number.MAX_SAFE_INTEGER),
-				)
-				.map(toSearchResult);
+		search: async (options = {}) =>
+			(await findMatchingEntries(plugin, options)).map(toSearchResult),
+		summarize: async (options) => {
+			const entries = await findMatchingEntries(plugin, options);
+			return {
+				value: evaluateSummary(options.summary, entries),
+				callouts: entries.map(toSearchResult),
+			};
 		},
 	};
+}
+
+async function findMatchingEntries(
+	plugin: CalloutTrackerPlugin,
+	options: CalloutSearchOptions,
+): Promise<CalloutEntry[]> {
+	const calloutTypes = normalizeCalloutTypes(options.callouts);
+	const entries = await findCallouts(
+		plugin.app,
+		options.rootFolder ?? plugin.settings.rootFolder,
+		calloutTypes,
+		plugin.settings.ignoredPrefixes,
+	);
+	const typeOrder = new Map(calloutTypes.map((type, index) => [type, index]));
+
+	return filterEntries(entries, options.search, createPropertyFilter(options.filter)).sort(
+		(first, second) =>
+			(typeOrder.get(first.type) ?? Number.MAX_SAFE_INTEGER) -
+			(typeOrder.get(second.type) ?? Number.MAX_SAFE_INTEGER),
+	);
 }
 
 function normalizeCalloutTypes(value: string[] | string | undefined): string[] {

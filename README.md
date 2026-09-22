@@ -137,3 +137,16 @@ await tracker.api.search({
 ```
 
 The `callouts` and `search` options are optional. When omitted, the API uses the configured default root folder and the default callout types `idea`, `note`, and `todo`.
+
+Use `summarize()` when you want a calculated result together with the matching callouts. It uses the same `callouts`, `rootFolder`, `search`, and `filter` options:
+
+```ts
+const summary = await tracker.api.summarize({
+    callouts: ['cost'],
+    filter: '{status} = "planned"',
+    summary: '"Total: " + sum({cost}) + "€"',
+});
+
+// summary.value contains the calculated text.
+// summary.callouts contains the matching callouts.
+```
