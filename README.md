@@ -145,7 +145,7 @@ summary: "Items: " + count()
 ```
 ````
 
-Supported functions are `count()`, `sum(expression)`, `avg(expression)`, `max(expression)`, and `min(expression)`. Properties can only be used inside these functions. Numeric arithmetic is supported inside aggregate functions, for example `sum({cost} / 2 + 4.5)`. Missing or non-numeric values are ignored by numeric functions; if no numeric values remain, they return `0`. `count()` counts every callout that remains after searching and filtering, even when it does not have the referenced property.
+Supported functions are `count()`, `count({property})`, `sum(expression)`, `avg(expression)`, `max(expression)`, `min(expression)`, `median({property})`, and `range({property})`. `count()` counts every matching callout, while `count({property})` counts matching callouts that contain that property. Properties can only be used inside these functions. Numeric arithmetic is supported inside aggregate functions, for example `sum({cost} / 2 + 4.5)`. Missing or non-numeric values are ignored by numeric functions; if no numeric values remain, they return `0`. `median()` returns the middle numeric value, averaging the two middle values when necessary. `range()` returns the maximum numeric value minus the minimum.
 
 Use `display:` to choose what the block renders. It defaults to `All`:
 

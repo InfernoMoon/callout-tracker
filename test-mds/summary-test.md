@@ -44,6 +44,17 @@ callouts: testSum
 summary: sum({cost})
 ```
 
+## Count with a property
+
+Expected result: `4`
+
+The callout without a cost property is not counted.
+
+```callout-tracker
+callouts: testSum
+summary: count({cost})
+```
+
 ## Average
 
 Expected result: `50`
@@ -69,6 +80,28 @@ Expected result: `20`
 ```callout-tracker
 callouts: testSum
 summary: min({cost})
+```
+
+## Median
+
+Expected result: `50`
+
+The numeric costs are `20`, `40`, `60`, and `80`, so the median is the average of `40` and `60`.
+
+```callout-tracker
+callouts: testSum
+summary: median({cost})
+```
+
+## Range
+
+Expected result: `60`
+
+The range is `80 - 20`.
+
+```callout-tracker
+callouts: testSum
+summary: range({cost})
 ```
 
 ## String formatting

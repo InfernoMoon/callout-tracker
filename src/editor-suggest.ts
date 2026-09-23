@@ -68,6 +68,8 @@ const SUMMARY_FUNCTIONS: SummaryFunctionOption[] = [
 	{ kind: 'summary-function', name: 'avg', description: 'Calculate the average of numeric values' },
 	{ kind: 'summary-function', name: 'max', description: 'Find the largest numeric value' },
 	{ kind: 'summary-function', name: 'min', description: 'Find the smallest numeric value' },
+	{ kind: 'summary-function', name: 'median', description: 'Find the median of numeric values' },
+	{ kind: 'summary-function', name: 'range', description: 'Find the difference between the largest and smallest values' },
 ];
 
 const FILTER_FUNCTIONS: FilterFunctionOption[] = [

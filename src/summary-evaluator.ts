@@ -1,7 +1,7 @@
 import type { CalloutEntry } from './types';
 
 type SummaryValue = number | string | null;
-type AggregateName = 'count' | 'sum' | 'avg' | 'max' | 'min';
+type AggregateName = 'count' | 'sum' | 'avg' | 'max' | 'min' | 'median' | 'range';
 
 type SummaryExpression =
 	| { kind: 'literal'; value: number | string }
@@ -118,7 +118,9 @@ class SummaryExpressionParser {
 		const argument = this.parseAdditive();
 		this.expect(')');
 		if (name === 'count') {
-			throw this.error('count() does not take an expression.');
+			if (argument.kind !== 'property') {
+				throw this.error('count() requires a property reference when an argument is provided.');
+			}
 		}
 		return { kind: 'aggregate', name, argument };
 	}
@@ -271,6 +273,10 @@ function evaluateAggregate(
 	entries: CalloutEntry[],
 ): number {
 	if (expression.name === 'count') {
+		const argument = expression.argument;
+		if (argument?.kind === 'property') {
+			return entries.filter((entry) => hasProperty(entry, argument.name)).length;
+		}
 		return entries.length;
 	}
 
@@ -295,7 +301,20 @@ function evaluateAggregate(
 			return Math.max(...values);
 		case 'min':
 			return Math.min(...values);
+		case 'median': {
+			const sorted = [...values].sort((left, right) => left - right);
+			const middle = Math.floor(sorted.length / 2);
+			return sorted.length % 2 === 0
+				? ((sorted[middle - 1] ?? 0) + (sorted[middle] ?? 0)) / 2
+				: sorted[middle] ?? 0;
+		}
+		case 'range':
+			return Math.max(...values) - Math.min(...values);
 	}
+}
+
+function hasProperty(entry: CalloutEntry, name: string): boolean {
+	return entry.properties.some((property) => property.key.toLowerCase() === name.toLowerCase());
 }
 
 function getPropertyValue(entry: CalloutEntry | undefined, name: string): string | number | null {
@@ -315,5 +334,6 @@ function getPropertyValue(entry: CalloutEntry | undefined, name: string): string
 }
 
 function isAggregateName(value: string): value is AggregateName {
-	return value === 'count' || value === 'sum' || value === 'avg' || value === 'max' || value === 'min';
+	return value === 'count' || value === 'sum' || value === 'avg' || value === 'max' || value === 'min' ||
+		value === 'median' || value === 'range';
 }

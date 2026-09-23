@@ -15,6 +15,7 @@ export interface CalloutSearchOptions {
 }
 
 export interface CalloutSummaryOptions extends CalloutSearchOptions {
+	/** Supports count(), count({property}), sum(), avg(), max(), min(), median(), and range(). */
 	summary: string;
 }
 
