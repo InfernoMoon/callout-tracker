@@ -4,6 +4,7 @@ import type { CalloutTrackerApi } from './api';
 import { registerCalloutTrackerProcessor } from './callout-renderer';
 import { registerCalloutTrackerEditorSuggest } from './editor-suggest';
 import { CalloutStyleManager } from './callout-styles';
+import { CalloutPropertyIndex } from './property-index';
 import {
 	DEFAULT_SETTINGS,
 	CalloutTrackerSettings,
@@ -13,6 +14,7 @@ import {
 export default class CalloutTrackerPlugin extends Plugin {
 	settings!: CalloutTrackerSettings;
 	calloutStyleManager!: CalloutStyleManager;
+	propertyIndex!: CalloutPropertyIndex;
 	api!: CalloutTrackerApi;
 
 	async onload(): Promise<void> {
@@ -27,6 +29,28 @@ export default class CalloutTrackerPlugin extends Plugin {
 			...callout,
 		}));
 		this.api = createCalloutTrackerApi(this);
+		this.propertyIndex = new CalloutPropertyIndex(
+			this.app,
+			() => this.settings.ignoredPrefixes,
+		);
+		this.registerEvent(this.app.vault.on('create', (file) => {
+			if (isPropertySourcePath(file.path)) {
+				this.propertyIndex.invalidate();
+			}
+		}));
+		this.registerEvent(this.app.vault.on('modify', (file) => {
+			if (isPropertySourcePath(file.path)) {
+				this.propertyIndex.invalidate();
+			}
+		}));
+		this.registerEvent(this.app.vault.on('delete', (file) => {
+			if (isPropertySourcePath(file.path)) {
+				this.propertyIndex.invalidate();
+			}
+		}));
+		this.registerEvent(this.app.vault.on('rename', () => {
+			this.propertyIndex.invalidate();
+		}));
 
 		if (!savedSettings?.ignoredPrefixes) {
 			const oldPrefixes = [
@@ -51,11 +75,16 @@ export default class CalloutTrackerPlugin extends Plugin {
 
 	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
+		this.propertyIndex.invalidate();
 	}
 
 	updateCalloutStyles(): void {
 		this.calloutStyleManager.update(this.settings.customCallouts);
 	}
+}
+
+function isPropertySourcePath(path: string): boolean {
+	return /\.(?:md|canvas)$/i.test(path);
 }
 
 type StoredCalloutTrackerSettings = Partial<CalloutTrackerSettings> & {

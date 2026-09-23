@@ -14,6 +14,22 @@ export async function findCallouts(
 	ignoredPrefixes: string[],
 ): Promise<CalloutEntry[]> {
 	const wantedTypes = new Set(calloutTypes.map((type) => type.toLowerCase()));
+	return findCalloutsInVault(app, rootFolder, ignoredPrefixes, wantedTypes);
+}
+
+export async function findAllCallouts(
+	app: App,
+	ignoredPrefixes: string[],
+): Promise<CalloutEntry[]> {
+	return findCalloutsInVault(app, '', ignoredPrefixes, null);
+}
+
+async function findCalloutsInVault(
+	app: App,
+	rootFolder: string,
+	ignoredPrefixes: string[],
+	wantedTypes: Set<string> | null,
+): Promise<CalloutEntry[]> {
 	const normalizedRoot = normalizeRootFolder(rootFolder);
 	const files = app.vault
 		.getFiles()
@@ -46,7 +62,7 @@ function isSupportedFile(file: TFile): boolean {
 function scanTextCallouts(
 	file: TFile,
 	content: string,
-	wantedTypes: Set<string>,
+	wantedTypes: Set<string> | null,
 	includeLineNumbers: boolean,
 ): CalloutEntry[] {
 	const lines = content.replace(/\r\n?/g, '\n').split('\n');
@@ -54,7 +70,7 @@ function scanTextCallouts(
 
 	for (let lineNumber = 0; lineNumber < lines.length; lineNumber++) {
 		const header = parseCalloutHeader(lines[lineNumber] ?? '');
-		if (!header || !wantedTypes.has(header.type)) {
+		if (!header || (wantedTypes !== null && !wantedTypes.has(header.type))) {
 			continue;
 		}
 
@@ -88,7 +104,7 @@ function scanTextCallouts(
 function scanCanvasCallouts(
 	file: TFile,
 	content: string,
-	wantedTypes: Set<string>,
+	wantedTypes: Set<string> | null,
 ): CalloutEntry[] {
 	let canvas: unknown;
 	try {

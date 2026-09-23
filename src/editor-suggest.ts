@@ -32,7 +32,19 @@ type DisplayOption = {
 	description: string;
 };
 
-type Suggestion = TrackerOption | CalloutOption | SummaryFunctionOption | DisplayOption;
+type PropertyOption = {
+	kind: 'property';
+	name: string;
+};
+
+type Suggestion =
+	| TrackerOption
+	| CalloutOption
+	| SummaryFunctionOption
+	| DisplayOption
+	| PropertyOption;
+
+type SuggestionKind = Suggestion['kind'];
 
 const OPTIONS: TrackerOption[] = [
 	{ kind: 'setting', key: 'callouts', label: 'callouts', description: 'Callout types to include' },
@@ -64,7 +76,8 @@ export function registerCalloutTrackerEditorSuggest(
 }
 
 class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
-	private suggestionKind: 'setting' | 'callout' | 'summary-function' | 'display' = 'setting';
+	private suggestionKind: SuggestionKind = 'setting';
+	private propertySuggestionMode: 'expression' | 'callout' = 'expression';
 
 	constructor(private readonly plugin: CalloutTrackerPlugin) {
 		super(plugin.app);
@@ -75,11 +88,22 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		editor: Editor,
 		file: TFile | null,
 	): EditorSuggestTriggerInfo | null {
-		if (!file || !isInsideCalloutTrackerBlock(editor, cursor.line)) {
+		if (!file) {
 			return null;
 		}
 
 		const beforeCursor = editor.getLine(cursor.line).slice(0, cursor.ch);
+		const insideTrackerBlock = isInsideCalloutTrackerBlock(editor, cursor.line);
+		const propertyTrigger = getPropertyTrigger(editor, cursor, beforeCursor);
+		if (propertyTrigger) {
+			this.suggestionKind = 'property';
+			this.propertySuggestionMode = propertyTrigger.mode;
+			return propertyTrigger;
+		}
+		if (!insideTrackerBlock) {
+			return null;
+		}
+
 		const calloutValue = getCalloutValueTrigger(beforeCursor, cursor);
 		if (calloutValue) {
 			this.suggestionKind = 'callout';
@@ -112,7 +136,7 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		};
 	}
 
-	getSuggestions(context: EditorSuggestContext): Suggestion[] {
+	getSuggestions(context: EditorSuggestContext): Suggestion[] | Promise<Suggestion[]> {
 		const query = context.query.toLowerCase();
 		if (this.suggestionKind === 'callout') {
 			return this.plugin.settings.customCallouts
@@ -128,13 +152,32 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		if (this.suggestionKind === 'display') {
 			return DISPLAY_OPTIONS.filter((option) => option.name.toLowerCase().startsWith(query));
 		}
+		if (this.suggestionKind === 'property') {
+			return this.getPropertySuggestions(context);
+		}
 
-	const existingKeys = getExistingSettingKeys(context.editor, context.start.line);
+		const existingKeys = getExistingSettingKeys(context.editor, context.start.line);
 		return OPTIONS.filter(
 			(option) =>
 				option.key.startsWith(query) &&
 				(option.key === 'summary' || !existingKeys.has(option.key)),
 		);
+	}
+
+	private async getPropertySuggestions(context: EditorSuggestContext): Promise<PropertyOption[]> {
+		const propertyNames = await this.plugin.propertyIndex.getPropertyNames();
+		const existingKeys = this.propertySuggestionMode === 'callout'
+			? getExistingCalloutPropertyKeys(context.editor, context.end.line, context.end.ch)
+			: new Set<string>();
+		const query = context.query.toLowerCase();
+
+		return propertyNames
+			.filter((name) => name.toLowerCase().startsWith(query))
+			.filter((name) => !existingKeys.has(name.toLowerCase()))
+			.map((name): PropertyOption => ({
+				kind: 'property',
+				name,
+			}));
 	}
 
 	renderSuggestion(value: Suggestion, element: HTMLElement): void {
@@ -152,6 +195,10 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
 			return;
 		}
+		if (value.kind === 'property') {
+			element.createDiv({ text: value.name });
+			return;
+		}
 
 		element.createDiv({ text: `${value.label}:` });
 		element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
@@ -163,19 +210,203 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			return;
 		}
 
-		const replacement = value.kind === 'callout'
-			? `${value.name}, `
-			: value.kind === 'summary-function'
-				? `${value.name}()`
-				: value.kind === 'display'
-					? value.name
-				: `${value.label}: `;
+		let replacement: string;
+		let cursorOffset = 0;
+		if (value.kind === 'callout') {
+			replacement = `${value.name}, `;
+		} else if (value.kind === 'summary-function') {
+			replacement = `${value.name}()`;
+		} else if (value.kind === 'display') {
+			replacement = value.name;
+		} else if (value.kind === 'property') {
+			if (this.propertySuggestionMode === 'callout') {
+				const trigger = getCalloutPropertyTrigger(
+					context.editor,
+					context.end,
+					context.editor.getLine(context.end.line).slice(0, context.end.ch),
+				);
+				replacement = `${value.name}${trigger?.hasDelimiterAfterCursor ? '' : ':: '}`;
+			} else {
+				const trigger = getExpressionPropertyTrigger(
+					context.editor,
+					context.end,
+					context.editor.getLine(context.end.line).slice(0, context.end.ch),
+				);
+				replacement = value.name;
+				if (trigger?.hasClosingBraceAfterCursor) {
+					cursorOffset = trigger.closingBraceOffset + 1;
+				} else {
+					replacement += '}';
+				}
+			}
+		} else {
+			replacement = `${value.label}: `;
+		}
 		context.editor.replaceRange(replacement, context.start, context.end);
 		context.editor.setCursor({
 			line: context.start.line,
-			ch: context.start.ch + replacement.length - (value.kind === 'summary-function' ? 1 : 0),
+			ch: context.start.ch + replacement.length + cursorOffset - (value.kind === 'summary-function' ? 1 : 0),
 		});
 	}
+}
+
+interface PropertyTrigger extends EditorSuggestTriggerInfo {
+	mode: 'expression' | 'callout';
+	hasDelimiterAfterCursor: boolean;
+	hasClosingBraceAfterCursor: boolean;
+	closingBraceOffset: number;
+}
+
+function getPropertyTrigger(
+	editor: Editor,
+	cursor: EditorPosition,
+	beforeCursor: string,
+): PropertyTrigger | null {
+	if (isInsideCalloutTrackerBlock(editor, cursor.line)) {
+		return getExpressionPropertyTrigger(editor, cursor, beforeCursor);
+	}
+
+	return getCalloutPropertyTrigger(editor, cursor, beforeCursor);
+}
+
+function getExpressionPropertyTrigger(
+	editor: Editor,
+	cursor: EditorPosition,
+	beforeCursor: string,
+): PropertyTrigger | null {
+	const settingMatch = beforeCursor.match(/^\s*(?:filter|summary)\s*:\s*(.*)$/i);
+	if (!settingMatch || settingMatch[1] === undefined) {
+		return null;
+	}
+
+	const value = settingMatch[1];
+	const openingBrace = value.lastIndexOf('{');
+	if (openingBrace < 0 || value.lastIndexOf('}') > openingBrace || isInsideQuotedString(value)) {
+		return null;
+	}
+
+	const query = value.slice(openingBrace + 1);
+	if (!/^[^\s{}:]*$/.test(query)) {
+		return null;
+	}
+	const remainingLine = editor.getLine(cursor.line).slice(cursor.ch);
+	const closingBrace = remainingLine.match(/^\s*}/);
+
+	return {
+		start: { line: cursor.line, ch: cursor.ch - query.length },
+		end: cursor,
+		query,
+		mode: 'expression',
+		hasDelimiterAfterCursor: false,
+		hasClosingBraceAfterCursor: closingBrace !== null,
+		closingBraceOffset: closingBrace?.[0].length ? closingBrace[0].length - 1 : 0,
+	};
+}
+
+function getCalloutPropertyTrigger(
+	editor: Editor,
+	cursor: EditorPosition,
+	beforeCursor: string,
+): PropertyTrigger | null {
+	const markerMatch = beforeCursor.match(/^\s*>\s*/);
+	if (!markerMatch || !isPropertySection(editor, cursor.line)) {
+		return null;
+	}
+
+	const propertyText = beforeCursor.slice(markerMatch[0].length);
+	if (!/^[^\s:]*$/.test(propertyText) || propertyText.length === 0) {
+		return null;
+	}
+
+	const remainingLine = editor.getLine(cursor.line).slice(cursor.ch);
+	const hasDelimiterAfterCursor = /^\s*::/.test(remainingLine);
+	if (beforeCursor.includes('::') || (!hasDelimiterAfterCursor && remainingLine.trim().length > 0)) {
+		return null;
+	}
+
+	return {
+		start: { line: cursor.line, ch: cursor.ch - propertyText.length },
+		end: cursor,
+		query: propertyText,
+		mode: 'callout',
+		hasDelimiterAfterCursor,
+		hasClosingBraceAfterCursor: false,
+		closingBraceOffset: 0,
+	};
+}
+
+function getExistingCalloutPropertyKeys(
+	editor: Editor,
+	currentLine: number,
+	cursorCharacter: number,
+): Set<string> {
+	const state = findCalloutBody(editor, currentLine);
+	if (!state) {
+		return new Set<string>();
+	}
+
+	const keys = new Set<string>();
+	for (let line = state.headerLine + 1; line <= currentLine; line++) {
+		const property = parseEditorProperty(editor.getLine(line));
+		if (property) {
+			keys.add(property.key.toLowerCase());
+		}
+	}
+
+	const currentLineText = editor.getLine(currentLine);
+	const beforeCursor = currentLineText.slice(0, cursorCharacter);
+	const currentProperty = parseEditorProperty(currentLineText);
+	if (currentProperty && /^\s*>\s*[^\s:]*$/.test(beforeCursor)) {
+		keys.delete(currentProperty.key.toLowerCase());
+	}
+
+	return keys;
+}
+
+function isPropertySection(editor: Editor, currentLine: number): boolean {
+	const state = findCalloutBody(editor, currentLine);
+	if (!state || state.headerLine === currentLine) {
+		return false;
+	}
+
+	for (let line = state.headerLine + 1; line < currentLine; line++) {
+		if (!parseEditorProperty(editor.getLine(line))) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function findCalloutBody(editor: Editor, currentLine: number): { headerLine: number } | null {
+	if (!isEditorQuoteLine(editor.getLine(currentLine))) {
+		return null;
+	}
+
+	let headerLine = currentLine;
+	while (headerLine > 0 && isEditorQuoteLine(editor.getLine(headerLine - 1))) {
+		headerLine--;
+	}
+
+	return isEditorCalloutHeader(editor.getLine(headerLine)) ? { headerLine } : null;
+}
+
+function parseEditorProperty(line: string): { key: string } | null {
+	const content = stripEditorQuoteMarker(line);
+	const match = content.match(/^([^\s:]+)\s*::/);
+	return match?.[1] ? { key: match[1] } : null;
+}
+
+function isEditorQuoteLine(line: string): boolean {
+	return /^\s*>/.test(line);
+}
+
+function stripEditorQuoteMarker(line: string): string {
+	return line.replace(/^\s*>\s*/, '');
+}
+
+function isEditorCalloutHeader(line: string): boolean {
+	return /^\s*>\s*\[![^\]\s]+\](?:\s|$)/.test(line);
 }
 
 function getCalloutValueTrigger(
