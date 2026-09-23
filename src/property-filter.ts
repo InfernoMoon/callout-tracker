@@ -17,6 +17,8 @@ type Comparison = {
 
 type FilterExpression =
 	| { kind: 'comparison'; comparison: Comparison }
+	| { kind: 'exists'; property: string }
+	| { kind: 'not'; expression: FilterExpression }
 	| { kind: 'and'; left: FilterExpression; right: FilterExpression }
 	| { kind: 'or'; left: FilterExpression; right: FilterExpression };
 
@@ -74,6 +76,20 @@ class PropertyFilterParser {
 
 	private parsePrimary(): FilterExpression {
 		this.skipWhitespace();
+		if (this.source[this.position] === '!' && this.source[this.position + 1] !== '=') {
+			this.position++;
+			this.skipWhitespace();
+			if (this.source[this.position] !== '(' && !/[A-Za-z_]/.test(this.source[this.position] ?? '')) {
+				throw this.error("Expected a function or '(' after '!'.");
+			}
+			return { kind: 'not', expression: this.parsePrimary() };
+		}
+		if (this.consumeKeyword('exists')) {
+			this.expect('(');
+			const property = this.readPropertyName();
+			this.expect(')');
+			return { kind: 'exists', property };
+		}
 		if (this.source[this.position] === '(') {
 			const start = this.position;
 			this.position++;
@@ -214,6 +230,21 @@ class PropertyFilterParser {
 		return operator;
 	}
 
+	private consumeKeyword(keyword: string): boolean {
+		this.skipWhitespace();
+		if (!this.source.startsWith(keyword, this.position)) {
+			return false;
+		}
+
+		const end = this.position + keyword.length;
+		if (/[A-Za-z0-9_]/.test(this.source[end] ?? '')) {
+			return false;
+		}
+
+		this.position = end;
+		return true;
+	}
+
 	private consume(character: string): boolean {
 		this.skipWhitespace();
 		if (this.source[this.position] !== character) {
@@ -245,6 +276,14 @@ class PropertyFilterParser {
 }
 
 function evaluate(expression: FilterExpression, properties: CalloutProperty[]): boolean {
+	if (expression.kind === 'not') {
+		return !evaluate(expression.expression, properties);
+	}
+	if (expression.kind === 'exists') {
+		return properties.some(
+			(property) => property.key.toLowerCase() === expression.property.toLowerCase(),
+		);
+	}
 	if (expression.kind === 'and') {
 		return evaluate(expression.left, properties) && evaluate(expression.right, properties);
 	}

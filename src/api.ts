@@ -10,6 +10,7 @@ export interface CalloutSearchOptions {
 	callouts?: string[] | string;
 	rootFolder?: string;
 	search?: string;
+	/** Supports comparisons, arithmetic, logical operators, and exists({property}). */
 	filter?: string;
 }
 

@@ -26,6 +26,12 @@ type SummaryFunctionOption = {
 	description: string;
 };
 
+type FilterFunctionOption = {
+	kind: 'filter-function';
+	name: string;
+	description: string;
+};
+
 type DisplayOption = {
 	kind: 'display';
 	name: string;
@@ -41,6 +47,7 @@ type Suggestion =
 	| TrackerOption
 	| CalloutOption
 	| SummaryFunctionOption
+	| FilterFunctionOption
 	| DisplayOption
 	| PropertyOption;
 
@@ -61,6 +68,10 @@ const SUMMARY_FUNCTIONS: SummaryFunctionOption[] = [
 	{ kind: 'summary-function', name: 'avg', description: 'Calculate the average of numeric values' },
 	{ kind: 'summary-function', name: 'max', description: 'Find the largest numeric value' },
 	{ kind: 'summary-function', name: 'min', description: 'Find the smallest numeric value' },
+];
+
+const FILTER_FUNCTIONS: FilterFunctionOption[] = [
+	{ kind: 'filter-function', name: 'exists', description: 'Match callouts that contain a property' },
 ];
 
 const DISPLAY_OPTIONS: DisplayOption[] = [
@@ -116,6 +127,12 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			return summaryFunction;
 		}
 
+		const filterFunction = getFilterFunctionTrigger(beforeCursor, cursor);
+		if (filterFunction) {
+			this.suggestionKind = 'filter-function';
+			return filterFunction;
+		}
+
 		const displayValue = getDisplayValueTrigger(beforeCursor, cursor);
 		if (displayValue) {
 			this.suggestionKind = 'display';
@@ -148,6 +165,9 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		}
 		if (this.suggestionKind === 'summary-function') {
 			return SUMMARY_FUNCTIONS.filter((option) => option.name.startsWith(query));
+		}
+		if (this.suggestionKind === 'filter-function') {
+			return FILTER_FUNCTIONS.filter((option) => option.name.startsWith(query));
 		}
 		if (this.suggestionKind === 'display') {
 			return DISPLAY_OPTIONS.filter((option) => option.name.toLowerCase().startsWith(query));
@@ -190,6 +210,11 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
 			return;
 		}
+		if (value.kind === 'filter-function') {
+			element.createDiv({ text: `${value.name}()` });
+			element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
+			return;
+		}
 		if (value.kind === 'display') {
 			element.createDiv({ text: value.name });
 			element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
@@ -216,6 +241,9 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			replacement = `${value.name}, `;
 		} else if (value.kind === 'summary-function') {
 			replacement = `${value.name}()`;
+		} else if (value.kind === 'filter-function') {
+			replacement = `${value.name}({})`;
+			cursorOffset = -2;
 		} else if (value.kind === 'display') {
 			replacement = value.name;
 		} else if (value.kind === 'property') {
@@ -463,6 +491,33 @@ function getSummaryFunctionTrigger(
 	};
 }
 
+function getFilterFunctionTrigger(
+	beforeCursor: string,
+	cursor: EditorPosition,
+): EditorSuggestTriggerInfo | null {
+	const settingMatch = beforeCursor.match(/^\s*filter\s*:\s*(.*)$/i);
+	if (!settingMatch || settingMatch[1] === undefined) {
+		return null;
+	}
+
+	const value = settingMatch[1];
+	if (isInsideQuotedString(value)) {
+		return null;
+	}
+
+	const functionMatch = value.match(/(?:^|[&|(!+\-*/\s])([a-z]*)$/i);
+	if (!functionMatch || functionMatch[1] === undefined || !functionMatch[1]) {
+		return null;
+	}
+
+	const query = functionMatch[1];
+	return {
+		start: { line: cursor.line, ch: cursor.ch - query.length },
+		end: cursor,
+		query,
+	};
+}
+
 function getDisplayValueTrigger(
 	beforeCursor: string,
 	cursor: EditorPosition,
@@ -504,17 +559,17 @@ function isInsideQuotedString(value: string): boolean {
 
 function getExistingSettingKeys(editor: Editor, currentLine: number): Set<string> {
 	const keys = new Set<string>();
-	let inside = false;
-	for (let line = 0; line <= currentLine; line++) {
+	const blockStart = findCalloutTrackerBlockStart(editor, currentLine);
+	if (blockStart === null) {
+		return keys;
+	}
+
+	for (let line = blockStart + 1; line <= currentLine; line++) {
 		const text = editor.getLine(line).trim();
-		if (!inside && /^(?:`{3,}|~{3,})\s*callout-tracker\s*$/i.test(text)) {
-			inside = true;
-			continue;
-		}
-		if (inside && /^(?:`{3,}|~{3,})\s*$/.test(text)) {
+		if (/^(?:`{3,}|~{3,})\s*$/.test(text)) {
 			break;
 		}
-		if (inside && line !== currentLine) {
+		if (line !== currentLine) {
 			const setting = text.match(/^([a-z][a-z0-9]*)\s*:/i);
 			if (setting?.[1]) {
 				keys.add(setting[1].toLowerCase());
@@ -525,15 +580,19 @@ function getExistingSettingKeys(editor: Editor, currentLine: number): Set<string
 }
 
 function isInsideCalloutTrackerBlock(editor: Editor, lineNumber: number): boolean {
-	let inside = false;
+	return findCalloutTrackerBlockStart(editor, lineNumber) !== null;
+}
+
+function findCalloutTrackerBlockStart(editor: Editor, lineNumber: number): number | null {
+	let blockStart: number | null = null;
 	for (let line = 0; line <= lineNumber; line++) {
 		const text = editor.getLine(line).trim();
-		if (!inside && /^(?:`{3,}|~{3,})\s*callout-tracker\s*$/i.test(text)) {
-			inside = true;
-		} else if (inside && /^(?:`{3,}|~{3,})\s*$/.test(text)) {
-			inside = false;
+		if (blockStart === null && /^(?:`{3,}|~{3,})\s*callout-tracker\s*$/i.test(text)) {
+			blockStart = line;
+		} else if (blockStart !== null && /^(?:`{3,}|~{3,})\s*$/.test(text)) {
+			blockStart = null;
 		}
 	}
 
-	return inside;
+	return blockStart;
 }

@@ -85,6 +85,28 @@ filter: ({cost} + {fee}) / 2 >= 25
 
 Missing or non-numeric values make an arithmetic comparison fail. `&` means all conditions must match, `|` means either condition may match, and parentheses can group conditions.
 
+Use `exists({property})` when you only want callouts that contain a property, regardless of its value:
+
+````markdown
+```callout-tracker
+callouts: cost
+filter: exists({date}) & {status} = "planned"
+```
+````
+
+`exists({date})` matches only callouts with a `date::` property. The function can be combined with comparisons, `&`, `|`, and parentheses.
+
+Use `!` before `exists(...)` or a parenthesized condition to negate it:
+
+````markdown
+```callout-tracker
+callouts: cost
+filter: !exists({completed}) & !({status} = "archived")
+```
+````
+
+`!=` remains the not-equal comparison operator.
+
 ### Summary
 
 Use `summary:` to calculate and display a value above the matching callouts. The calculation runs after `search:` and `filter:` have selected the callouts:
@@ -132,18 +154,18 @@ const tracker = Object.values(app.plugins.plugins)
 await tracker.api.search({
     callouts: ['hook', 'clue'],
     search: 'dragon',
-    filter: '{status} = "planned"',
+    filter: 'exists({status}) & {status} = "planned"',
 });
 ```
 
-The `callouts` and `search` options are optional. When omitted, the API uses the configured default root folder and the default callout types `idea`, `note`, and `todo`.
+The `callouts` and `search` options are optional. When omitted, the API uses the configured default root folder and the default callout types `idea`, `note`, and `todo`. The `filter` option supports the same expressions as a tracker block, including `exists({property})`.
 
 Use `summarize()` when you want a calculated result together with the matching callouts. It uses the same `callouts`, `rootFolder`, `search`, and `filter` options:
 
 ```ts
 const summary = await tracker.api.summarize({
     callouts: ['cost'],
-    filter: '{status} = "planned"',
+    filter: 'exists({status}) & {status} = "planned"',
     summary: '"Total: " + sum({cost}) + "€"',
 });
 

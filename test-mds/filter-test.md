@@ -113,3 +113,39 @@ Expected: No matching callouts.
 callouts: testFilter
 filter: {missing} + 1 > 0
 ```
+
+## Does not exist
+
+Expected: Alpha, Beta, Gamma, Delta
+
+```callout-tracker
+callouts: testFilter
+filter: !exists({missing})
+```
+
+## Negated condition
+
+Expected: Gamma
+
+```callout-tracker
+callouts: testFilter
+filter: !(exists({status}) & {status} = "planned")
+```
+
+## Exists
+
+Expected: Alpha, Beta, Gamma, Delta
+
+```callout-tracker
+callouts: testFilter
+filter: exists({status})
+```
+
+## Exists with a comparison
+
+Expected: Alpha, Beta, Delta
+
+```callout-tracker
+callouts: testFilter
+filter: exists({status}) & {status} = "planned"
+```
