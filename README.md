@@ -19,6 +19,15 @@ Use Callouts in your notes to mark important thoughts, tasks, and suggestions.
 ```
 <br>
 
+Add `[ ]` or `[x]` immediately after the callout type to make a tracker result interactive:
+
+```markdown
+> [!todo] [ ] Finish preparing the dungeon
+> [!todo] [x] Prepare the dungeon
+```
+
+The checkbox is displayed in Callout Tracker results. Clicking it updates the checkbox in the original Markdown callout.
+
 Add a `callout-tracker` code block to any note:
 ````markdown
 ```callout-tracker
@@ -71,8 +80,7 @@ callouts: cost
 filter: {cost} > 40
 ```
 ````
-
-This shows only callouts whose numeric `cost::` property is greater than 40. For string values, use `=` or `!=`. Numeric values support all comparison operators. Use `&`, `|`, and parentheses to combine conditions.
+This shows only callouts whose numeric `cost::` property is greater than 40.
 
 `filter:` supports `{property}` references, quoted strings, numbers, arithmetic operators (`+`, `-`, `*`, `/`), and the comparison operators `=`, `!=`, `<`, `>`, `<=`, and `>=`:
 
@@ -96,7 +104,7 @@ filter: exists({date}) & {status} = "planned"
 
 `exists({date})` matches only callouts with a `date::` property. The function can be combined with comparisons, `&`, `|`, and parentheses.
 
-Use `!` before `exists(...)` or a parenthesized condition to negate it:
+Use `!` before functions or a parenthesized condition to negate it:
 
 ````markdown
 ```callout-tracker
@@ -104,8 +112,6 @@ callouts: cost
 filter: !exists({completed}) & !({status} = "archived")
 ```
 ````
-
-`!=` remains the not-equal comparison operator.
 
 The filter also supports these property functions:
 
@@ -126,19 +132,9 @@ filter: contains({tags}, "dragon") & in({status}, "planned", "active")
 
 ### Named filters
 
-`filter:` is the global filter for the block. You can also define reusable named filters with `filter name:`. Named filters do not replace the global filter; they are available to individual summary functions:
+`filter:` is the global filter for the block. You can also define reusable named filters with `filter name:`. Named filters do not replace the global filter; they are available to individual summary functions (explained below in Summary).
 
-````markdown
-```callout-tracker
-callouts: cost
-filter: exists({cost})
-filter paris: {city} = "Paris"
-filter germany: {country} = "Germany"
-summary: "Paris x2: " + sum({cost}, paris) * 2 + " | Germany: " + sum({cost}, germany)
-```
-````
-
-The global `filter:` and `search:` select the callouts shown in the block. A named filter is applied to those already-selected callouts only, so each summary can calculate a different subset. Named filter names may contain letters, numbers, underscores, and hyphens, and are case-insensitive when referenced.
+The global `filter:` and `search:` select the callouts shown in the block. A named filter is applied to those already-selected callouts only, so each summary can calculate a different subset.
 
 ### Summary
 
@@ -162,7 +158,31 @@ summary: "Items: " + count()
 ```
 ````
 
-Supported functions are `count()`, `count(namedFilter)`, `count({property})`, `count({property}, namedFilter)`, `sum(expression)`, `avg(expression)`, `max(expression)`, `min(expression)`, `median({property})`, and `range({property})`. For example, `count(paris)` counts the callouts matching the named `paris` filter, while `sum({cost}, paris)` calculates a sum for that filter. `count()` counts every matching callout, while `count({property})` counts matching callouts that contain that property. Properties can only be used inside these functions. Numeric arithmetic is supported inside aggregate functions, for example `sum({cost} / 2 + 4.5)`. Missing or non-numeric values are ignored by numeric functions; if no numeric values remain, they return `0`. `median()` returns the middle numeric value, averaging the two middle values when necessary. `range()` returns the maximum numeric value minus the minimum.
+Supported functions:
+
+- `count()` counts every matching callout.
+- `count(namedFilter)` counts callouts matching the named filter, for example `count(perPerson)`.
+- `count({property})` counts matching callouts that contain the property.
+- `sum(expression)` adds numeric values, for example `sum({cost})`.
+- `avg(expression)` calculates the average of numeric values.
+- `max(expression)` returns the largest numeric value.
+- `min(expression)` returns the smallest numeric value.
+- `median({property})` returns the middle numeric value, averaging the two middle values when necessary.
+- `range({property})` returns the maximum numeric value minus the minimum.
+
+Every aggregate can use numeric arithmetic, for example `sum({cost} / 2 + 4.5)`. Missing or non-numeric values are ignored by numeric functions; if no numeric values remain, they return `0`. 
+
+All functions use all callouts selected in filter and search. For more complex Summaries you can use named filters:
+````markdown
+```callout-tracker
+callouts: cost
+filter: exists({cost})
+filter total: {type} = "Total"
+filter perPerson: {type} = "per Person"
+summary: "Total Cost per Person: " + (sum({cost}, perPerson) / sum({cost}, total)/3)
+```
+````
+This lets you use multiple filters in one callout block. The named filters do not influence the displayed callouts under the summary.
 
 Use `display:` to choose what the block renders. It defaults to `All`:
 

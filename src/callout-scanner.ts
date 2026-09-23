@@ -5,6 +5,7 @@ import type { CalloutEntry } from './types';
 interface ParsedCalloutHeader {
 	type: string;
 	title: string;
+	checked?: boolean;
 }
 
 export async function findCallouts(
@@ -87,6 +88,7 @@ function scanTextCallouts(
 			fileName: file.basename,
 			filePath: file.path,
 			...(includeLineNumbers ? { startLine: lineNumber } : {}),
+			...(header.checked === undefined ? {} : { checked: header.checked }),
 			title: header.title,
 			body: propertyBlock
 				? propertyBlock.remainingLines.join('\n').trim()
@@ -181,9 +183,13 @@ function parseCalloutHeader(line: string): ParsedCalloutHeader | null {
 		return null;
 	}
 
+	const title = afterType.trim();
+	const checkbox = title.match(/^\[([ xX])\](?:\s*(.*))?$/);
+
 	return {
 		type,
-		title: afterType.trim(),
+		title: checkbox?.[2]?.trim() ?? (checkbox ? '' : title),
+		...(checkbox ? { checked: checkbox[1]?.toLowerCase() === 'x' } : {}),
 	};
 }
 

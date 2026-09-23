@@ -23,6 +23,74 @@
 	gap: 0.5em;
 }
 
+.callout .callout-tracker__checkbox {
+	appearance: none;
+	-webkit-appearance: none;
+	--callout-tracker-checkbox-color: rgb(var(--callout-color, var(--interactive-accent-rgb, 127, 109, 242)));
+	background: transparent;
+	border: 2px solid var(--callout-tracker-checkbox-color);
+	border-radius: var(--radius-s);
+	box-sizing: border-box;
+	cursor: pointer;
+	display: inline-grid;
+	flex: 0 0 auto;
+	height: 1.4em;
+	margin: 0 -0.25em 0 0.1em;
+	place-content: center;
+	transform: translateY(0.06em);
+	width: 1.4em;
+}
+
+.callout:not(.callout-tracker) .callout-tracker__checkbox {
+	margin-right: 0.15em;
+}
+
+.callout .callout-tracker__checkbox::after {
+	color: color-mix(in srgb, var(--text-on-accent, #ffffff) 78%, transparent);
+	content: '✓';
+	display: block;
+	font-size: 0.95em;
+	font-weight: 900;
+	height: auto;
+	line-height: 1;
+	transform: scale(0);
+	transition: color 100ms ease, transform 100ms ease;
+	width: auto;
+}
+
+.callout .callout-tracker__checkbox:checked {
+	background-color: var(--callout-tracker-checkbox-color);
+	border-color: var(--callout-tracker-checkbox-color) !important;
+}
+
+.callout .callout-tracker__checkbox:hover {
+	background-color: color-mix(in srgb, var(--callout-tracker-checkbox-color) 25%, transparent) !important;
+	border-color: var(--callout-tracker-checkbox-color) !important;
+}
+
+.callout .callout-tracker__checkbox:checked:hover {
+	background-color: var(--callout-tracker-checkbox-color) !important;
+	filter: brightness(1.18);
+}
+
+.callout .callout-tracker__checkbox:checked::after {
+	transform: scale(1);
+}
+
+.callout .callout-tracker__checkbox:checked:hover::after {
+	color: var(--text-on-accent, #ffffff);
+}
+
+.callout .callout-tracker__checkbox:focus-visible {
+	outline: 2px solid var(--callout-tracker-checkbox-color);
+	outline-offset: 2px;
+}
+
+.callout-tracker__title--checked .callout-title-inner {
+	text-decoration: line-through;
+	text-decoration-thickness: 0.08em;
+}
+
 .callout-tracker__entry:hover,
 .callout-tracker__entry:focus-visible {
 	background-color: var(--background-modifier-hover);

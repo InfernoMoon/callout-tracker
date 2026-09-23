@@ -7,6 +7,7 @@ export interface CalloutEntry {
 	fileName: string;
 	filePath: string;
 	startLine?: number;
+	checked?: boolean;
 	title: string;
 	body: string;
 	properties: CalloutProperty[];

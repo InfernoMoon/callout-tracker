@@ -2,6 +2,7 @@ import { Plugin } from 'obsidian';
 import { createCalloutTrackerApi } from './api';
 import type { CalloutTrackerApi } from './api';
 import { registerCalloutTrackerProcessor } from './callout-renderer';
+import { registerCalloutCheckboxPostProcessor } from './callout-checkbox';
 import { registerCalloutTrackerEditorSuggest } from './editor-suggest';
 import { CalloutStyleManager } from './callout-styles';
 import { CalloutPropertyIndex } from './property-index';
@@ -66,6 +67,7 @@ export default class CalloutTrackerPlugin extends Plugin {
 		this.registerMarkdownPostProcessor((element) => {
 			this.calloutStyleManager.applyToElement(element);
 		});
+		registerCalloutCheckboxPostProcessor(this);
 		this.calloutStyleManager.update(this.settings.customCallouts);
 
 		registerCalloutTrackerProcessor(this);

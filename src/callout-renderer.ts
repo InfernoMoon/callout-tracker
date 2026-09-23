@@ -7,6 +7,7 @@ import {
 	Notice,
 	setIcon,
 } from 'obsidian';
+import { applyCalloutCheckboxColor, updateSourceCheckbox } from './callout-checkbox';
 import { renderCalloutProperties } from './callout-properties';
 import { applyCalloutStyle, findCalloutStyle, normalizeIconName } from './callout-styles';
 import { findCallouts } from './callout-scanner';
@@ -134,7 +135,9 @@ async function renderCalloutTracker(
 		}
 
 		for (const calloutType of config.calloutTypes) {
-			const typeEntries = matchingEntries.filter((entry) => entry.type === calloutType);
+			const typeEntries = matchingEntries
+				.filter((entry) => entry.type === calloutType)
+				.sort((first, second) => getCheckboxOrder(first.checked) - getCheckboxOrder(second.checked));
 			for (const entry of typeEntries) {
 				renderEntry(app, entry, customCallouts, container, context);
 			}
@@ -163,6 +166,13 @@ function parseDisplayMode(value: string): CalloutTrackerDisplayMode {
 		return 'onlyCallouts';
 	}
 	return 'all';
+}
+
+function getCheckboxOrder(checked: boolean | undefined): number {
+	if (checked === undefined) {
+		return 0;
+	}
+	return checked ? 2 : 1;
 }
 
 function filterEntries(
@@ -202,6 +212,40 @@ function renderEntry(
 
 	const titleEl = item.createDiv({ cls: 'callout-title' });
 	const iconEl = titleEl.createDiv({ cls: 'callout-icon' });
+	titleEl.classList.toggle('callout-tracker__title--checked', entry.checked === true);
+	let checkbox: HTMLInputElement | null = null;
+	if (entry.checked !== undefined && entry.startLine !== undefined) {
+		const calloutCheckbox = titleEl.createEl('input', {
+			cls: 'callout-tracker__checkbox',
+			type: 'checkbox',
+			attr: {
+				'aria-label': entry.checked ? 'Mark callout as incomplete' : 'Mark callout as complete',
+			},
+		});
+		checkbox = calloutCheckbox;
+		calloutCheckbox.checked = entry.checked;
+		calloutCheckbox.addEventListener('click', (event) => {
+			event.stopPropagation();
+			titleEl.classList.toggle('callout-tracker__title--checked', calloutCheckbox.checked);
+			void updateSourceCheckbox(
+				app,
+				entry.filePath,
+				entry.startLine,
+				calloutCheckbox,
+				calloutCheckbox.checked,
+				entry.title,
+			).then((updated) => {
+				if (!updated) {
+					titleEl.classList.toggle('callout-tracker__title--checked', !calloutCheckbox.checked);
+				}
+			});
+		});
+		calloutCheckbox.addEventListener('keydown', (event) => {
+			if (event.key === 'Enter' || event.key === ' ') {
+				event.stopPropagation();
+			}
+		});
+	}
 	const titleInnerEl = titleEl.createDiv({ cls: 'callout-title-inner' });
 	titleInnerEl.createSpan({
 		text: entry.title || capitalize(entry.type),
@@ -246,6 +290,9 @@ function renderEntry(
 		if (callout.hasIcon && callout.iconName.trim()) {
 			setIcon(iconEl, normalizeIconName(callout.iconName));
 		}
+	}
+	if (checkbox) {
+		applyCalloutCheckboxColor(checkbox, item);
 	}
 }
 
