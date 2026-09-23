@@ -19,6 +19,7 @@ type FilterExpression =
 	| { kind: 'comparison'; comparison: Comparison }
 	| { kind: 'exists'; property: string }
 	| { kind: 'empty'; property: string }
+	| { kind: 'missingOrEmpty'; property: string }
 	| { kind: 'contains'; property: string; value: string }
 	| { kind: 'startsWith'; property: string; value: string }
 	| { kind: 'in'; property: string; values: Literal[] }
@@ -280,9 +281,11 @@ class PropertyFilterParser {
 		this.expect('(');
 		const property = this.readPropertyName();
 
-		if (normalizedName === 'empty') {
+		if (normalizedName === 'empty' || normalizedName === 'missingorempty') {
 			this.expect(')');
-			return { kind: 'empty', property };
+			return normalizedName === 'empty'
+				? { kind: 'empty', property }
+				: { kind: 'missingOrEmpty', property };
 		}
 
 		this.expect(',');
@@ -362,6 +365,10 @@ function evaluate(expression: FilterExpression, properties: CalloutProperty[]): 
 	if (expression.kind === 'empty') {
 		const property = findProperty(properties, expression.property);
 		return property !== undefined && property.value.trim().length === 0;
+	}
+	if (expression.kind === 'missingOrEmpty') {
+		const property = findProperty(properties, expression.property);
+		return property === undefined || property.value.trim().length === 0;
 	}
 	if (expression.kind === 'contains' || expression.kind === 'startsWith') {
 		const property = findProperty(properties, expression.property);

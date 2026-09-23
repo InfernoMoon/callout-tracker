@@ -110,6 +110,7 @@ filter: !exists({completed}) & !({status} = "archived")
 The filter also supports these property functions:
 
 - `empty({property})` matches a property that exists but has no value.
+- `missingOrEmpty({property})` matches when a property is missing or has no value.
 - `contains({property}, "text")` matches when the property contains the text, case-insensitively.
 - `startsWith({property}, "text")` matches when the property starts with the text, case-insensitively.
 - `in({property}, value1, value2, ...)` matches exact string or number values.

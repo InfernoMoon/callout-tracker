@@ -174,6 +174,17 @@ callouts: testFunction
 filter: empty({note})
 ```
 
+## Missing or empty property
+
+Expected: Empty note, Dragon hook, Planned hook, Finished hook
+
+The function matches both the blank `note::` property and callouts that do not have a `note::` property.
+
+```callout-tracker
+callouts: testFunction
+filter: missingOrEmpty({note})
+```
+
 ## Contains
 
 Expected: Dragon hook, Finished hook
