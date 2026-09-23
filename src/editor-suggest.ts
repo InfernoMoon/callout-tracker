@@ -32,6 +32,12 @@ type FilterFunctionOption = {
 	description: string;
 };
 
+type FilterKeywordOption = {
+	kind: 'filter-keyword';
+	name: string;
+	description: string;
+};
+
 type FilterDefinitionOption = {
 	kind: 'filter-definition';
 	name: string;
@@ -60,6 +66,7 @@ type Suggestion =
 	| CalloutOption
 	| SummaryFunctionOption
 	| FilterFunctionOption
+	| FilterKeywordOption
 	| FilterDefinitionOption
 	| NamedFilterReferenceOption
 	| DisplayOption
@@ -92,6 +99,11 @@ const FILTER_FUNCTIONS: FilterFunctionOption[] = [
 	{ kind: 'filter-function', name: 'contains', description: 'Match a property containing text' },
 	{ kind: 'filter-function', name: 'startsWith', description: 'Match a property starting with text' },
 	{ kind: 'filter-function', name: 'in', description: 'Match a property against exact values' },
+];
+
+const FILTER_KEYWORDS: FilterKeywordOption[] = [
+	{ kind: 'filter-keyword', name: 'checked', description: 'Match callouts with a checked header checkbox' },
+	{ kind: 'filter-keyword', name: 'hasCheckbox', description: 'Match callouts with any header checkbox' },
 ];
 
 const GLOBAL_FILTER_DEFINITION: FilterDefinitionOption = {
@@ -207,7 +219,7 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			return SUMMARY_FUNCTIONS.filter((option) => option.name.startsWith(query));
 		}
 		if (this.suggestionKind === 'filter-function') {
-			return FILTER_FUNCTIONS.filter((option) => option.name.startsWith(query));
+			return [...FILTER_FUNCTIONS, ...FILTER_KEYWORDS].filter((option) => option.name.toLowerCase().startsWith(query));
 		}
 		if (this.suggestionKind === 'named-filter-reference') {
 			return getNamedFilterSuggestions(context.editor, context.start.line, query);
@@ -265,6 +277,11 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
 			return;
 		}
+		if (value.kind === 'filter-keyword') {
+			element.createDiv({ text: value.name });
+			element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
+			return;
+		}
 		if (value.kind === 'filter-definition') {
 			element.createDiv({ text: value.name });
 			element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
@@ -308,6 +325,8 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 					: '{}';
 			replacement = `${value.name}(${argumentsTemplate})`;
 			cursorOffset = `${value.name}({`.length - replacement.length;
+		} else if (value.kind === 'filter-keyword') {
+			replacement = value.name;
 		} else if (value.kind === 'filter-definition') {
 			if (value.mode === 'global') {
 				replacement = 'filter: ';

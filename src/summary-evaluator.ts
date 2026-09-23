@@ -372,7 +372,7 @@ function getNamedFilterEntries(
 	if (!predicate) {
 		throw new SummaryExpressionError(`Unknown named filter '${filterName}'.`);
 	}
-	return entries.filter((entry) => predicate(entry.properties));
+	return entries.filter((entry) => predicate(entry.properties, entry.checked));
 }
 
 function hasProperty(entry: CalloutEntry, name: string): boolean {

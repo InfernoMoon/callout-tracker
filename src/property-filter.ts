@@ -17,6 +17,8 @@ type Comparison = {
 
 type FilterExpression =
 	| { kind: 'comparison'; comparison: Comparison }
+	| { kind: 'checked' }
+	| { kind: 'hasCheckbox' }
 	| { kind: 'exists'; property: string }
 	| { kind: 'empty'; property: string }
 	| { kind: 'missingOrEmpty'; property: string }
@@ -37,7 +39,7 @@ export class PropertyFilterError extends Error {
 	}
 }
 
-export type PropertyFilter = (properties: CalloutProperty[]) => boolean;
+export type PropertyFilter = (properties: CalloutProperty[], checked?: boolean) => boolean;
 
 export function createPropertyFilterMap(filters: Record<string, string>): Map<string, PropertyFilter> {
 	const predicates = new Map<string, PropertyFilter>();
@@ -57,7 +59,7 @@ export function createPropertyFilter(expression: string | undefined): PropertyFi
 	}
 
 	const ast = new PropertyFilterParser(source).parse();
-	return (properties) => evaluate(ast, properties);
+	return (properties, checked) => evaluate(ast, properties, checked);
 }
 
 class PropertyFilterParser {
@@ -108,6 +110,13 @@ class PropertyFilterParser {
 		}
 		const functionName = this.readIdentifier();
 		if (functionName !== null) {
+			const normalizedName = functionName.toLowerCase();
+			if (normalizedName === 'checked') {
+				return { kind: 'checked' };
+			}
+			if (normalizedName === 'hascheckbox') {
+				return { kind: 'hasCheckbox' };
+			}
 			return this.parseFilterFunction(functionName);
 		}
 		if (this.source[this.position] === '(') {
@@ -355,9 +364,19 @@ class PropertyFilterParser {
 	}
 }
 
-function evaluate(expression: FilterExpression, properties: CalloutProperty[]): boolean {
+function evaluate(
+	expression: FilterExpression,
+	properties: CalloutProperty[],
+	checked: boolean | undefined,
+): boolean {
 	if (expression.kind === 'not') {
-		return !evaluate(expression.expression, properties);
+		return !evaluate(expression.expression, properties, checked);
+	}
+	if (expression.kind === 'checked') {
+		return checked === true;
+	}
+	if (expression.kind === 'hasCheckbox') {
+		return checked !== undefined;
 	}
 	if (expression.kind === 'exists') {
 		return findProperty(properties, expression.property) !== undefined;
@@ -391,10 +410,10 @@ function evaluate(expression: FilterExpression, properties: CalloutProperty[]): 
 		return expression.values.some((expected) => compare(actual, '=', expected.value));
 	}
 	if (expression.kind === 'and') {
-		return evaluate(expression.left, properties) && evaluate(expression.right, properties);
+		return evaluate(expression.left, properties, checked) && evaluate(expression.right, properties, checked);
 	}
 	if (expression.kind === 'or') {
-		return evaluate(expression.left, properties) || evaluate(expression.right, properties);
+		return evaluate(expression.left, properties, checked) || evaluate(expression.right, properties, checked);
 	}
 
 	const left = evaluateValue(expression.comparison.left, properties);

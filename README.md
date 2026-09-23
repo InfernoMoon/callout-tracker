@@ -26,7 +26,7 @@ Add `[ ]` or `[x]` immediately after the callout type to make a tracker result i
 > [!todo] [x] Prepare the dungeon
 ```
 
-The checkbox is displayed in Callout Tracker results. Clicking it updates the checkbox in the original Markdown callout.
+The checkbox is displayed in Callout Tracker results. Clicking it updates the checkbox in the original Markdown callout. `[x]` and `[X]` are treated as checked.
 
 Add a `callout-tracker` code block to any note:
 ````markdown
@@ -114,12 +114,15 @@ filter: !exists({completed}) & !({status} = "archived")
 ````
 
 The filter also supports these property functions:
-
 - `empty({property})` matches a property that exists but has no value.
 - `missingOrEmpty({property})` matches when a property is missing or has no value.
 - `contains({property}, "text")` matches when the property contains the text, case-insensitively.
 - `startsWith({property}, "text")` matches when the property starts with the text, case-insensitively.
 - `in({property}, value1, value2, ...)` matches exact string or number values.
+
+and also supports these keywords:
+- `checked`
+- `hasCheckbox`
 
 For example:
 

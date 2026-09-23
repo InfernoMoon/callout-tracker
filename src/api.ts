@@ -10,7 +10,7 @@ export interface CalloutSearchOptions {
 	callouts?: string[] | string;
 	rootFolder?: string;
 	search?: string;
-	/** Supports comparisons, arithmetic, logical operators, and filter functions such as exists({property}), missingOrEmpty({property}), and contains({property}, "text"). */
+	/** Supports comparisons, arithmetic, checkbox keywords such as checked and hasCheckbox, and filter functions such as exists({property}), missingOrEmpty({property}), and contains({property}, "text"). */
 	filter?: string;
 }
 
@@ -98,7 +98,7 @@ function filterEntries(
 	const query = search?.trim().toLowerCase() ?? '';
 	return entries.filter((entry) =>
 		(!query || getSearchableText(entry).includes(query)) &&
-		(!filterPredicate || filterPredicate(entry.properties)),
+		(!filterPredicate || filterPredicate(entry.properties, entry.checked)),
 	);
 }
 

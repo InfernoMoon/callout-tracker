@@ -183,7 +183,7 @@ function filterEntries(
 	const query = search.trim().toLowerCase();
 	return entries.filter((entry) =>
 		(!query || getSearchableText(entry).includes(query)) &&
-		(!filterPredicate || filterPredicate(entry.properties)),
+		(!filterPredicate || filterPredicate(entry.properties, entry.checked)),
 	);
 }
 

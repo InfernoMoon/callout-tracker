@@ -19,3 +19,39 @@ The rendered order should be: no checkbox marker, unchecked, then checked.
 
 > [!testCheckbox] [x]No-space title
 > The checkbox should still be recognized when there is no space after `[x]`.
+
+## Checked
+
+Expected: Checked callout, No-space title
+
+```callout-tracker
+callouts: testCheckbox
+filter: checked
+```
+
+## Has checkbox
+
+Expected: Unchecked callout, Checked callout, No-space title
+
+```callout-tracker
+callouts: testCheckbox
+filter: hasCheckbox
+```
+
+## Explicitly unchecked
+
+Expected: Unchecked callout
+
+```callout-tracker
+callouts: testCheckbox
+filter: hasCheckbox & !checked
+```
+
+## No checkbox marker
+
+Expected: No checkbox marker
+
+```callout-tracker
+callouts: testCheckbox
+filter: !hasCheckbox
+```
