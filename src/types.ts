@@ -18,6 +18,7 @@ export interface CalloutTrackerBlockConfig {
 	rootFolder: string;
 	search: string;
 	filter: string;
+	namedFilters: Record<string, string>;
 	summaries: string[];
 	display: CalloutTrackerDisplayMode;
 }

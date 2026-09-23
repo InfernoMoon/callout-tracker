@@ -1,5 +1,5 @@
 import { findCallouts } from './callout-scanner';
-import { createPropertyFilter } from './property-filter';
+import { createPropertyFilter, createPropertyFilterMap } from './property-filter';
 import { evaluateSummary } from './summary-evaluator';
 import type CalloutTrackerPlugin from './main';
 import type { CalloutEntry, CalloutProperty } from './types';
@@ -15,8 +15,10 @@ export interface CalloutSearchOptions {
 }
 
 export interface CalloutSummaryOptions extends CalloutSearchOptions {
-	/** Supports count(), count({property}), sum(), avg(), max(), min(), median(), and range(). */
+	/** Supports count(), count({property}), and numeric aggregates with an optional named-filter argument, such as sum({cost}, paris). */
 	summary: string;
+	/** Reusable filter expressions referenced by aggregate functions in the summary. */
+	namedFilters?: Record<string, string>;
 }
 
 export interface CalloutSearchResult {
@@ -48,7 +50,11 @@ export function createCalloutTrackerApi(plugin: CalloutTrackerPlugin): CalloutTr
 		summarize: async (options) => {
 			const entries = await findMatchingEntries(plugin, options);
 			return {
-				value: evaluateSummary(options.summary, entries),
+				value: evaluateSummary(
+					options.summary,
+					entries,
+					createPropertyFilterMap(options.namedFilters ?? {}),
+				),
 				callouts: entries.map(toSearchResult),
 			};
 		},

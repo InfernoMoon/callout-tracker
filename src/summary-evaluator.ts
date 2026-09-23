@@ -1,3 +1,4 @@
+import type { PropertyFilter } from './property-filter';
 import type { CalloutEntry } from './types';
 
 type SummaryValue = number | string | null;
@@ -7,7 +8,9 @@ type SummaryExpression =
 	| { kind: 'literal'; value: number | string }
 	| { kind: 'property'; name: string }
 	| { kind: 'binary'; operator: '+' | '-' | '*' | '/'; left: SummaryExpression; right: SummaryExpression }
-	| { kind: 'aggregate'; name: AggregateName; argument?: SummaryExpression };
+	| { kind: 'aggregate'; name: AggregateName; argument?: SummaryExpression; filterName?: string };
+
+export type NamedFilterMap = ReadonlyMap<string, PropertyFilter>;
 
 export class SummaryExpressionError extends Error {
 	constructor(message: string) {
@@ -16,10 +19,14 @@ export class SummaryExpressionError extends Error {
 	}
 }
 
-export function evaluateSummary(expression: string, entries: CalloutEntry[]): string {
+export function evaluateSummary(
+	expression: string,
+	entries: CalloutEntry[],
+	namedFilters: NamedFilterMap = new Map(),
+): string {
 	const parser = new SummaryExpressionParser(expression);
 	const syntaxTree = parser.parse();
-	const value = evaluateExpression(syntaxTree, entries, undefined, false, true);
+	const value = evaluateExpression(syntaxTree, entries, undefined, false, true, namedFilters);
 	return value === null ? '' : String(value);
 }
 
@@ -116,13 +123,27 @@ class SummaryExpressionParser {
 		}
 
 		const argument = this.parseAdditive();
+		let filterName: string | undefined;
+		if (this.consume(',')) {
+			filterName = this.readFilterName();
+		}
 		this.expect(')');
 		if (name === 'count') {
 			if (argument.kind !== 'property') {
 				throw this.error('count() requires a property reference when an argument is provided.');
 			}
 		}
-		return { kind: 'aggregate', name, argument };
+		return { kind: 'aggregate', name, argument, ...(filterName ? { filterName } : {}) };
+	}
+
+	private readFilterName(): string {
+		this.skipWhitespace();
+		const name = this.source.slice(this.position).match(/^[A-Za-z][A-Za-z0-9_-]*/)?.[0];
+		if (!name) {
+			throw this.error('Expected a named filter.');
+		}
+		this.position += name.length;
+		return name;
 	}
 
 	private readPropertyName(): string {
@@ -208,6 +229,7 @@ function evaluateExpression(
 	entry: CalloutEntry | undefined,
 	allowProperty: boolean,
 	allowAggregate: boolean,
+	namedFilters: NamedFilterMap,
 ): SummaryValue {
 	switch (expression.kind) {
 		case 'literal':
@@ -220,12 +242,12 @@ function evaluateExpression(
 			}
 			return getPropertyValue(entry, expression.name);
 		case 'binary':
-			return evaluateBinary(expression, entries, entry, allowProperty, allowAggregate);
+			return evaluateBinary(expression, entries, entry, allowProperty, allowAggregate, namedFilters);
 		case 'aggregate':
 			if (!allowAggregate) {
 				throw new SummaryExpressionError('Aggregate functions cannot be nested.');
 			}
-			return evaluateAggregate(expression, entries);
+			return evaluateAggregate(expression, entries, namedFilters);
 	}
 }
 
@@ -235,9 +257,10 @@ function evaluateBinary(
 	entry: CalloutEntry | undefined,
 	allowProperty: boolean,
 	allowAggregate: boolean,
+	namedFilters: NamedFilterMap,
 ): SummaryValue {
-	const left = evaluateExpression(expression.left, entries, entry, allowProperty, allowAggregate);
-	const right = evaluateExpression(expression.right, entries, entry, allowProperty, allowAggregate);
+	const left = evaluateExpression(expression.left, entries, entry, allowProperty, allowAggregate, namedFilters);
+	const right = evaluateExpression(expression.right, entries, entry, allowProperty, allowAggregate, namedFilters);
 	if (left === null || right === null) {
 		return null;
 	}
@@ -271,20 +294,24 @@ function evaluateBinary(
 function evaluateAggregate(
 	expression: Extract<SummaryExpression, { kind: 'aggregate' }>,
 	entries: CalloutEntry[],
+	namedFilters: NamedFilterMap,
 ): number {
+	const filteredEntries = expression.filterName === undefined
+		? entries
+		: getNamedFilterEntries(expression.filterName, entries, namedFilters);
 	if (expression.name === 'count') {
 		const argument = expression.argument;
 		if (argument?.kind === 'property') {
-			return entries.filter((entry) => hasProperty(entry, argument.name)).length;
+			return filteredEntries.filter((entry) => hasProperty(entry, argument.name)).length;
 		}
-		return entries.length;
+		return filteredEntries.length;
 	}
 
-	const values = entries
+	const values = filteredEntries
 		.map((entry) =>
 			expression.argument === undefined
 				? null
-				: evaluateExpression(expression.argument, entries, entry, true, false),
+				: evaluateExpression(expression.argument, filteredEntries, entry, true, false, namedFilters),
 		)
 		.filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
 
@@ -311,6 +338,18 @@ function evaluateAggregate(
 		case 'range':
 			return Math.max(...values) - Math.min(...values);
 	}
+}
+
+function getNamedFilterEntries(
+	filterName: string,
+	entries: CalloutEntry[],
+	namedFilters: NamedFilterMap,
+): CalloutEntry[] {
+	const predicate = namedFilters.get(filterName.toLowerCase());
+	if (!predicate) {
+		throw new SummaryExpressionError(`Unknown named filter '${filterName}'.`);
+	}
+	return entries.filter((entry) => predicate(entry.properties));
 }
 
 function hasProperty(entry: CalloutEntry, name: string): boolean {

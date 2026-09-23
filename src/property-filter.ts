@@ -38,6 +38,17 @@ export class PropertyFilterError extends Error {
 
 export type PropertyFilter = (properties: CalloutProperty[]) => boolean;
 
+export function createPropertyFilterMap(filters: Record<string, string>): Map<string, PropertyFilter> {
+	const predicates = new Map<string, PropertyFilter>();
+	for (const [name, expression] of Object.entries(filters)) {
+		const predicate = createPropertyFilter(expression);
+		if (predicate) {
+			predicates.set(name.toLowerCase(), predicate);
+		}
+	}
+	return predicates;
+}
+
 export function createPropertyFilter(expression: string | undefined): PropertyFilter | null {
 	const source = expression?.trim() ?? '';
 	if (!source) {

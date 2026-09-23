@@ -10,7 +10,7 @@ import {
 import { renderCalloutProperties } from './callout-properties';
 import { applyCalloutStyle, findCalloutStyle, normalizeIconName } from './callout-styles';
 import { findCallouts } from './callout-scanner';
-import { createPropertyFilter, PropertyFilterError } from './property-filter';
+import { createPropertyFilter, createPropertyFilterMap, PropertyFilterError } from './property-filter';
 import { evaluateSummary, SummaryExpressionError } from './summary-evaluator';
 import type CalloutTrackerPlugin from './main';
 import type {
@@ -47,6 +47,7 @@ function parseBlockConfig(
 		rootFolder: defaultRootFolder,
 		search: '',
 		filter: '',
+		namedFilters: {},
 		summaries: [],
 		display: 'all',
 	};
@@ -57,12 +58,10 @@ function parseBlockConfig(
 			continue;
 		}
 
-		const key = rawLine
-			.slice(0, separator)
-			.trim()
-			.toLowerCase()
-			.replaceAll(' ', '');
+		const rawKey = rawLine.slice(0, separator).trim();
+		const key = rawKey.toLowerCase().replaceAll(' ', '');
 		const value = rawLine.slice(separator + 1).trim();
+		const namedFilter = rawKey.match(/^filter\s+([A-Za-z][A-Za-z0-9_-]*)$/i);
 		if (key === 'callouts') {
 			config.calloutTypes = value
 				.split(/[\s,]+/)
@@ -74,6 +73,8 @@ function parseBlockConfig(
 			config.search = value;
 		} else if (key === 'filter') {
 			config.filter = value;
+		} else if (namedFilter?.[1]) {
+			config.namedFilters[namedFilter[1].toLowerCase()] = value;
 		} else if (key === 'summary') {
 			if (value) {
 				config.summaries.push(value);
@@ -106,11 +107,12 @@ async function renderCalloutTracker(
 		);
 		const filterPredicate = createPropertyFilter(config.filter);
 		const matchingEntries = filterEntries(entries, config.search, filterPredicate);
+		const namedFilters = createPropertyFilterMap(config.namedFilters);
 		if (config.display !== 'onlyCallouts') {
 			for (const summary of config.summaries) {
 				container.createDiv({
 					cls: 'callout-tracker__summary',
-					text: evaluateSummary(summary, matchingEntries),
+					text: evaluateSummary(summary, matchingEntries, namedFilters),
 				});
 			}
 		}

@@ -32,6 +32,18 @@ type FilterFunctionOption = {
 	description: string;
 };
 
+type FilterDefinitionOption = {
+	kind: 'filter-definition';
+	name: string;
+	description: string;
+	mode: 'global' | 'named';
+};
+
+type NamedFilterReferenceOption = {
+	kind: 'named-filter-reference';
+	name: string;
+};
+
 type DisplayOption = {
 	kind: 'display';
 	name: string;
@@ -48,6 +60,8 @@ type Suggestion =
 	| CalloutOption
 	| SummaryFunctionOption
 	| FilterFunctionOption
+	| FilterDefinitionOption
+	| NamedFilterReferenceOption
 	| DisplayOption
 	| PropertyOption;
 
@@ -57,7 +71,6 @@ const OPTIONS: TrackerOption[] = [
 	{ kind: 'setting', key: 'callouts', label: 'callouts', description: 'Callout types to include' },
 	{ kind: 'setting', key: 'rootfolder', label: 'rootfolder', description: 'Folder to search' },
 	{ kind: 'setting', key: 'search', label: 'search', description: 'Text to find in callout titles or bodies' },
-	{ kind: 'setting', key: 'filter', label: 'filter', description: 'Filter by callout properties' },
 	{ kind: 'setting', key: 'summary', label: 'summary', description: 'Calculate a value from matching callouts' },
 	{ kind: 'setting', key: 'display', label: 'display', description: 'Choose which results to render' },
 ];
@@ -79,6 +92,20 @@ const FILTER_FUNCTIONS: FilterFunctionOption[] = [
 	{ kind: 'filter-function', name: 'startsWith', description: 'Match a property starting with text' },
 	{ kind: 'filter-function', name: 'in', description: 'Match a property against exact values' },
 ];
+
+const GLOBAL_FILTER_DEFINITION: FilterDefinitionOption = {
+	kind: 'filter-definition',
+	name: 'Global filter',
+	description: 'Filter all callouts in this block',
+	mode: 'global',
+};
+
+const NAMED_FILTER_DEFINITION: FilterDefinitionOption = {
+	kind: 'filter-definition',
+	name: 'Named filter',
+	description: 'Define a reusable filter for summaries',
+	mode: 'named',
+};
 
 const DISPLAY_OPTIONS: DisplayOption[] = [
 	{ kind: 'display', name: 'All', description: 'Show summaries and callouts' },
@@ -125,6 +152,12 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		if (calloutValue) {
 			this.suggestionKind = 'callout';
 			return calloutValue;
+		}
+
+		const summaryFilter = getSummaryFilterTrigger(beforeCursor, cursor);
+		if (summaryFilter) {
+			this.suggestionKind = 'named-filter-reference';
+			return summaryFilter;
 		}
 
 		const summaryFunction = getSummaryFunctionTrigger(beforeCursor, cursor);
@@ -175,6 +208,9 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		if (this.suggestionKind === 'filter-function') {
 			return FILTER_FUNCTIONS.filter((option) => option.name.startsWith(query));
 		}
+		if (this.suggestionKind === 'named-filter-reference') {
+			return getNamedFilterSuggestions(context.editor, context.start.line, query);
+		}
 		if (this.suggestionKind === 'display') {
 			return DISPLAY_OPTIONS.filter((option) => option.name.toLowerCase().startsWith(query));
 		}
@@ -183,11 +219,18 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		}
 
 		const existingKeys = getExistingSettingKeys(context.editor, context.start.line);
-		return OPTIONS.filter(
+		const options: Suggestion[] = OPTIONS.filter(
 			(option) =>
 				option.key.startsWith(query) &&
 				(option.key === 'summary' || !existingKeys.has(option.key)),
 		);
+		if (!existingKeys.has('filter') && 'filter'.startsWith(query)) {
+			options.push(GLOBAL_FILTER_DEFINITION);
+		}
+		if ('filter'.startsWith(query)) {
+			options.push(NAMED_FILTER_DEFINITION);
+		}
+		return options;
 	}
 
 	private async getPropertySuggestions(context: EditorSuggestContext): Promise<PropertyOption[]> {
@@ -219,6 +262,15 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		if (value.kind === 'filter-function') {
 			element.createDiv({ text: `${value.name}()` });
 			element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
+			return;
+		}
+		if (value.kind === 'filter-definition') {
+			element.createDiv({ text: value.name });
+			element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
+			return;
+		}
+		if (value.kind === 'named-filter-reference') {
+			element.createDiv({ text: value.name });
 			return;
 		}
 		if (value.kind === 'display') {
@@ -255,6 +307,21 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 					: '{}';
 			replacement = `${value.name}(${argumentsTemplate})`;
 			cursorOffset = `${value.name}({`.length - replacement.length;
+		} else if (value.kind === 'filter-definition') {
+			if (value.mode === 'global') {
+				replacement = 'filter: ';
+			} else {
+				const placeholder = 'myFilter';
+				replacement = `filter ${placeholder}: `;
+				context.editor.replaceRange(replacement, context.start, context.end);
+				context.editor.setSelection(
+					{ line: context.start.line, ch: context.start.ch + 'filter '.length },
+					{ line: context.start.line, ch: context.start.ch + 'filter '.length + placeholder.length },
+				);
+				return;
+			}
+		} else if (value.kind === 'named-filter-reference') {
+			replacement = value.name;
 		} else if (value.kind === 'display') {
 			replacement = value.name;
 		} else if (value.kind === 'property') {
@@ -313,7 +380,7 @@ function getExpressionPropertyTrigger(
 	cursor: EditorPosition,
 	beforeCursor: string,
 ): PropertyTrigger | null {
-	const settingMatch = beforeCursor.match(/^\s*(?:filter|summary)\s*:\s*(.*)$/i);
+	const settingMatch = beforeCursor.match(/^\s*(?:filter(?:\s+[A-Za-z][A-Za-z0-9_-]*)?|summary)\s*:\s*(.*)$/i);
 	if (!settingMatch || settingMatch[1] === undefined) {
 		return null;
 	}
@@ -506,7 +573,7 @@ function getFilterFunctionTrigger(
 	beforeCursor: string,
 	cursor: EditorPosition,
 ): EditorSuggestTriggerInfo | null {
-	const settingMatch = beforeCursor.match(/^\s*filter\s*:\s*(.*)$/i);
+	const settingMatch = beforeCursor.match(/^\s*filter(?:\s+[A-Za-z][A-Za-z0-9_-]*)?\s*:\s*(.*)$/i);
 	if (!settingMatch || settingMatch[1] === undefined) {
 		return null;
 	}
@@ -527,6 +594,61 @@ function getFilterFunctionTrigger(
 		end: cursor,
 		query,
 	};
+}
+
+function getSummaryFilterTrigger(
+	beforeCursor: string,
+	cursor: EditorPosition,
+): EditorSuggestTriggerInfo | null {
+	const settingMatch = beforeCursor.match(/^\s*summary\s*:\s*(.*)$/i);
+	if (!settingMatch || settingMatch[1] === undefined || isInsideQuotedString(settingMatch[1])) {
+		return null;
+	}
+
+	const functionMatch = settingMatch[1].match(
+		/(?:^|[+\-*/(\s])(?:count|sum|avg|max|min|median|range)\s*\([^,]*,\s*([A-Za-z][A-Za-z0-9_-]*)?$/i,
+	);
+	if (!functionMatch) {
+		return null;
+	}
+
+	const query = functionMatch[1] ?? '';
+	return {
+		start: { line: cursor.line, ch: cursor.ch - query.length },
+		end: cursor,
+		query,
+	};
+}
+
+function getNamedFilterSuggestions(
+	editor: Editor,
+	currentLine: number,
+	query: string,
+): NamedFilterReferenceOption[] {
+	const names = new Map<string, string>();
+	const blockStart = findCalloutTrackerBlockStart(editor, currentLine);
+	if (blockStart === null) {
+		return [];
+	}
+
+	for (let line = blockStart + 1; line < editor.lineCount(); line++) {
+		const text = editor.getLine(line).trim();
+		if (/^(?:`{3,}|~{3,})\s*$/.test(text)) {
+			break;
+		}
+		const match = text.match(/^filter\s+([A-Za-z][A-Za-z0-9_-]*)\s*:/i);
+		if (match?.[1]) {
+			names.set(match[1].toLowerCase(), match[1]);
+		}
+	}
+
+	return [...names.values()]
+		.sort((left, right) => left.localeCompare(right))
+		.filter((name) => name.toLowerCase().startsWith(query.toLowerCase()))
+		.map((name): NamedFilterReferenceOption => ({
+			kind: 'named-filter-reference',
+			name,
+		}));
 }
 
 function getDisplayValueTrigger(

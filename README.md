@@ -123,6 +123,22 @@ filter: contains({tags}, "dragon") & in({status}, "planned", "active")
 ```
 ````
 
+### Named filters
+
+`filter:` is the global filter for the block. You can also define reusable named filters with `filter name:`. Named filters do not replace the global filter; they are available to individual summary functions:
+
+````markdown
+```callout-tracker
+callouts: cost
+filter: exists({cost})
+filter paris: {city} = "Paris"
+filter germany: {country} = "Germany"
+summary: "Paris x2: " + sum({cost}, paris) * 2 + " | Germany: " + sum({cost}, germany)
+```
+````
+
+The global `filter:` and `search:` select the callouts shown in the block. A named filter is applied to those already-selected callouts only, so each summary can calculate a different subset. Named filter names may contain letters, numbers, underscores, and hyphens, and are case-insensitive when referenced.
+
 ### Summary
 
 Use `summary:` to calculate and display a value above the matching callouts. The calculation runs after `search:` and `filter:` have selected the callouts:
@@ -145,7 +161,7 @@ summary: "Items: " + count()
 ```
 ````
 
-Supported functions are `count()`, `count({property})`, `sum(expression)`, `avg(expression)`, `max(expression)`, `min(expression)`, `median({property})`, and `range({property})`. `count()` counts every matching callout, while `count({property})` counts matching callouts that contain that property. Properties can only be used inside these functions. Numeric arithmetic is supported inside aggregate functions, for example `sum({cost} / 2 + 4.5)`. Missing or non-numeric values are ignored by numeric functions; if no numeric values remain, they return `0`. `median()` returns the middle numeric value, averaging the two middle values when necessary. `range()` returns the maximum numeric value minus the minimum.
+Supported functions are `count()`, `count({property})`, `sum(expression)`, `avg(expression)`, `max(expression)`, `min(expression)`, `median({property})`, and `range({property})`. Every aggregate can optionally take a named filter as its second argument, for example `sum({cost}, paris)` or `count({cost}, germany)`. `count()` counts every matching callout, while `count({property})` counts matching callouts that contain that property. Properties can only be used inside these functions. Numeric arithmetic is supported inside aggregate functions, for example `sum({cost} / 2 + 4.5)`. Missing or non-numeric values are ignored by numeric functions; if no numeric values remain, they return `0`. `median()` returns the middle numeric value, averaging the two middle values when necessary. `range()` returns the maximum numeric value minus the minimum.
 
 Use `display:` to choose what the block renders. It defaults to `All`:
 
@@ -182,7 +198,11 @@ Use `summarize()` when you want a calculated result together with the matching c
 const summary = await tracker.api.summarize({
     callouts: ['cost'],
     filter: 'exists({status}) & {status} = "planned"',
-    summary: '"Total: " + sum({cost}) + "€"',
+    namedFilters: {
+        paris: '{city} = "Paris"',
+        germany: '{country} = "Germany"',
+    },
+    summary: '"Total: " + sum({cost}, paris) + "€"',
 });
 
 // summary.value contains the calculated text.

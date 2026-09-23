@@ -157,6 +157,19 @@ filter: {cost} > 50
 summary: sum({cost})
 ```
 
+## Named filters
+
+Expected result: `Planned twice: 360 | Done: 20`
+
+Named filters are applied separately to the callouts already selected by the block. This lets one summary combine multiple subsets.
+
+```callout-tracker
+callouts: testSum
+filter planned: {status} = "planned"
+filter done: {status} = "done"
+summary: "Planned twice: " + sum({cost}, planned) * 2 + " | Done: " + sum({cost}, done)
+```
+
 ## No matching numeric values
 
 Expected result: `0` and no matching callouts below it.
