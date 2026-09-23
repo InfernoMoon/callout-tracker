@@ -15,7 +15,7 @@ export interface CalloutSearchOptions {
 }
 
 export interface CalloutSummaryOptions extends CalloutSearchOptions {
-	/** Supports count(), count({property}), and numeric aggregates with an optional named-filter argument, such as sum({cost}, paris). */
+	/** Supports count(), count(namedFilter), count({property}), and numeric aggregates with named-filter arguments, such as sum({cost}, paris). */
 	summary: string;
 	/** Reusable filter expressions referenced by aggregate functions in the summary. */
 	namedFilters?: Record<string, string>;

@@ -115,6 +115,13 @@ class SummaryExpressionParser {
 
 		this.expect('(');
 		this.skipWhitespace();
+		if (name === 'count') {
+			const standaloneFilter = this.readStandaloneFilterName();
+			if (standaloneFilter) {
+				this.expect(')');
+				return { kind: 'aggregate', name, filterName: standaloneFilter };
+			}
+		}
 		if (this.consume(')')) {
 			if (name !== 'count') {
 				throw this.error(`${name}() requires an expression.`);
@@ -143,6 +150,22 @@ class SummaryExpressionParser {
 			throw this.error('Expected a named filter.');
 		}
 		this.position += name.length;
+		return name;
+	}
+
+	private readStandaloneFilterName(): string | null {
+		const start = this.position;
+		const name = this.source.slice(this.position).match(/^[A-Za-z][A-Za-z0-9_-]*/)?.[0];
+		if (!name) {
+			return null;
+		}
+
+		this.position += name.length;
+		this.skipWhitespace();
+		if (this.source[this.position] !== ')') {
+			this.position = start;
+			return null;
+		}
 		return name;
 	}
 

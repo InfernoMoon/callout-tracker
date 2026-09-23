@@ -170,6 +170,16 @@ filter done: {status} = "done"
 summary: "Planned twice: " + sum({cost}, planned) * 2 + " | Done: " + sum({cost}, done)
 ```
 
+## Count with a named filter
+
+Expected result: `3`
+
+```callout-tracker
+callouts: testSum
+filter planned: {status} = "planned"
+summary: count(planned)
+```
+
 ## No matching numeric values
 
 Expected result: `0` and no matching callouts below it.

@@ -606,13 +606,13 @@ function getSummaryFilterTrigger(
 	}
 
 	const functionMatch = settingMatch[1].match(
-		/(?:^|[+\-*/(\s])(?:count|sum|avg|max|min|median|range)\s*\([^,]*,\s*([A-Za-z][A-Za-z0-9_-]*)?$/i,
+		/(?:^|[+\-*/(\s])(?:count\s*\(\s*([A-Za-z][A-Za-z0-9_-]*)?|(?:count|sum|avg|max|min|median|range)\s*\([^,]*,\s*([A-Za-z][A-Za-z0-9_-]*)?)$/i,
 	);
 	if (!functionMatch) {
 		return null;
 	}
 
-	const query = functionMatch[1] ?? '';
+	const query = functionMatch[1] ?? functionMatch[2] ?? '';
 	return {
 		start: { line: cursor.line, ch: cursor.ch - query.length },
 		end: cursor,
