@@ -135,14 +135,6 @@ async function renderCalloutTracker(
 
 		for (const calloutType of config.calloutTypes) {
 			const typeEntries = matchingEntries.filter((entry) => entry.type === calloutType);
-			if (typeEntries.length === 0) {
-				continue;
-			}
-
-			container.createEl('h2', {
-				text: calloutType.slice(0, 1).toUpperCase() + calloutType.slice(1),
-				cls: 'callout-tracker__heading',
-			});
 			for (const entry of typeEntries) {
 				renderEntry(app, entry, customCallouts, container, context);
 			}
