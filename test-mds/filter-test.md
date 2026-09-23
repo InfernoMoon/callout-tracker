@@ -22,6 +22,21 @@ These callouts test arithmetic inside `filter:` expressions.
 > bonus:: 20
 > status:: planned
 
+> [!testFunction] Empty note
+> note::
+
+> [!testFunction] Dragon hook
+> tags:: dragon, forest
+> status:: active
+
+> [!testFunction] Planned hook
+> tags:: village
+> status:: planned
+
+> [!testFunction] Finished hook
+> tags:: city, dragon
+> status:: finished
+
 ## Division
 
 Expected: Beta, Delta
@@ -148,4 +163,40 @@ Expected: Alpha, Beta, Delta
 ```callout-tracker
 callouts: testFilter
 filter: exists({status}) & {status} = "planned"
+```
+
+## Empty property
+
+Expected: Empty note
+
+```callout-tracker
+callouts: testFunction
+filter: empty({note})
+```
+
+## Contains
+
+Expected: Dragon hook, Finished hook
+
+```callout-tracker
+callouts: testFunction
+filter: contains({tags}, "dragon")
+```
+
+## Starts with
+
+Expected: Dragon hook, Planned hook
+
+```callout-tracker
+callouts: testFunction
+filter: startsWith({tags}, "dragon") | startsWith({tags}, "village")
+```
+
+## In
+
+Expected: Dragon hook, Planned hook
+
+```callout-tracker
+callouts: testFunction
+filter: in({status}, "active", "planned")
 ```

@@ -107,6 +107,22 @@ filter: !exists({completed}) & !({status} = "archived")
 
 `!=` remains the not-equal comparison operator.
 
+The filter also supports these property functions:
+
+- `empty({property})` matches a property that exists but has no value.
+- `contains({property}, "text")` matches when the property contains the text, case-insensitively.
+- `startsWith({property}, "text")` matches when the property starts with the text, case-insensitively.
+- `in({property}, value1, value2, ...)` matches exact string or number values.
+
+For example:
+
+````markdown
+```callout-tracker
+callouts: hook
+filter: contains({tags}, "dragon") & in({status}, "planned", "active")
+```
+````
+
 ### Summary
 
 Use `summary:` to calculate and display a value above the matching callouts. The calculation runs after `search:` and `filter:` have selected the callouts:
@@ -158,7 +174,7 @@ await tracker.api.search({
 });
 ```
 
-The `callouts` and `search` options are optional. When omitted, the API uses the configured default root folder and the default callout types `idea`, `note`, and `todo`. The `filter` option supports the same expressions as a tracker block, including `exists({property})`.
+The `callouts` and `search` options are optional. When omitted, the API uses the configured default root folder and the default callout types `idea`, `note`, and `todo`. The `filter` option supports the same expressions as a tracker block, including `exists`, `empty`, `contains`, `startsWith`, and `in`.
 
 Use `summarize()` when you want a calculated result together with the matching callouts. It uses the same `callouts`, `rootFolder`, `search`, and `filter` options:
 

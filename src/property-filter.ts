@@ -18,6 +18,10 @@ type Comparison = {
 type FilterExpression =
 	| { kind: 'comparison'; comparison: Comparison }
 	| { kind: 'exists'; property: string }
+	| { kind: 'empty'; property: string }
+	| { kind: 'contains'; property: string; value: string }
+	| { kind: 'startsWith'; property: string; value: string }
+	| { kind: 'in'; property: string; values: Literal[] }
 	| { kind: 'not'; expression: FilterExpression }
 	| { kind: 'and'; left: FilterExpression; right: FilterExpression }
 	| { kind: 'or'; left: FilterExpression; right: FilterExpression };
@@ -89,6 +93,10 @@ class PropertyFilterParser {
 			const property = this.readPropertyName();
 			this.expect(')');
 			return { kind: 'exists', property };
+		}
+		const functionName = this.readIdentifier();
+		if (functionName !== null) {
+			return this.parseFilterFunction(functionName);
 		}
 		if (this.source[this.position] === '(') {
 			const start = this.position;
@@ -245,6 +253,64 @@ class PropertyFilterParser {
 		return true;
 	}
 
+	private readIdentifier(): string | null {
+		this.skipWhitespace();
+		const identifier = this.source.slice(this.position).match(/^[A-Za-z_][A-Za-z0-9_]*/)?.[0];
+		if (!identifier) {
+			return null;
+		}
+
+		this.position += identifier.length;
+		return identifier;
+	}
+
+	private parseFilterFunction(functionName: string): FilterExpression {
+		const normalizedName = functionName.toLowerCase();
+		this.expect('(');
+		const property = this.readPropertyName();
+
+		if (normalizedName === 'empty') {
+			this.expect(')');
+			return { kind: 'empty', property };
+		}
+
+		this.expect(',');
+		if (normalizedName === 'contains' || normalizedName === 'startswith') {
+			const value = this.parseStringArgument(functionName);
+			this.expect(')');
+			return normalizedName === 'contains'
+				? { kind: 'contains', property, value }
+				: { kind: 'startsWith', property, value };
+		}
+
+		if (normalizedName === 'in') {
+			const values: Literal[] = [this.parseLiteralArgument(functionName)];
+			while (this.consume(',')) {
+				values.push(this.parseLiteralArgument(functionName));
+			}
+			this.expect(')');
+			return { kind: 'in', property, values };
+		}
+
+		throw this.error(`Unknown filter function '${functionName}'.`);
+	}
+
+	private parseStringArgument(functionName: string): string {
+		const value = this.parseValueExpression();
+		if (value.kind !== 'string') {
+			throw this.error(`${functionName}() requires a quoted string argument.`);
+		}
+		return value.value;
+	}
+
+	private parseLiteralArgument(functionName: string): Literal {
+		const value = this.parseValueExpression();
+		if (value.kind !== 'number' && value.kind !== 'string') {
+			throw this.error(`${functionName}() requires string or number values.`);
+		}
+		return value;
+	}
+
 	private consume(character: string): boolean {
 		this.skipWhitespace();
 		if (this.source[this.position] !== character) {
@@ -280,9 +346,31 @@ function evaluate(expression: FilterExpression, properties: CalloutProperty[]): 
 		return !evaluate(expression.expression, properties);
 	}
 	if (expression.kind === 'exists') {
-		return properties.some(
-			(property) => property.key.toLowerCase() === expression.property.toLowerCase(),
-		);
+		return findProperty(properties, expression.property) !== undefined;
+	}
+	if (expression.kind === 'empty') {
+		const property = findProperty(properties, expression.property);
+		return property !== undefined && property.value.trim().length === 0;
+	}
+	if (expression.kind === 'contains' || expression.kind === 'startsWith') {
+		const property = findProperty(properties, expression.property);
+		if (!property) {
+			return false;
+		}
+
+		const value = property.value.trim().toLowerCase();
+		const query = expression.value.trim().toLowerCase();
+		return expression.kind === 'contains'
+			? value.includes(query)
+			: value.startsWith(query);
+	}
+	if (expression.kind === 'in') {
+		const property = findProperty(properties, expression.property);
+		if (!property) {
+			return false;
+		}
+		const actual = normalizeValue(property.value);
+		return expression.values.some((expected) => compare(actual, '=', expected.value));
 	}
 	if (expression.kind === 'and') {
 		return evaluate(expression.left, properties) && evaluate(expression.right, properties);
@@ -301,9 +389,7 @@ function evaluateValue(expression: ValueExpression, properties: CalloutProperty[
 		return expression.value;
 	}
 	if (expression.kind === 'property') {
-		const property = properties.find(
-			(candidate) => candidate.key.toLowerCase() === expression.name.toLowerCase(),
-		);
+		const property = findProperty(properties, expression.name);
 		return property ? normalizeValue(property.value) : null;
 	}
 
@@ -329,6 +415,10 @@ function evaluateValue(expression: ValueExpression, properties: CalloutProperty[
 			}
 			return left / right;
 	}
+}
+
+function findProperty(properties: CalloutProperty[], name: string): CalloutProperty | undefined {
+	return properties.find((property) => property.key.toLowerCase() === name.toLowerCase());
 }
 
 function normalizeValue(value: string): EvaluatedValue {

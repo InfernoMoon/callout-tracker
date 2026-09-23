@@ -72,6 +72,10 @@ const SUMMARY_FUNCTIONS: SummaryFunctionOption[] = [
 
 const FILTER_FUNCTIONS: FilterFunctionOption[] = [
 	{ kind: 'filter-function', name: 'exists', description: 'Match callouts that contain a property' },
+	{ kind: 'filter-function', name: 'empty', description: 'Match callouts with an empty property' },
+	{ kind: 'filter-function', name: 'contains', description: 'Match a property containing text' },
+	{ kind: 'filter-function', name: 'startsWith', description: 'Match a property starting with text' },
+	{ kind: 'filter-function', name: 'in', description: 'Match a property against exact values' },
 ];
 
 const DISPLAY_OPTIONS: DisplayOption[] = [
@@ -242,8 +246,13 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		} else if (value.kind === 'summary-function') {
 			replacement = `${value.name}()`;
 		} else if (value.kind === 'filter-function') {
-			replacement = `${value.name}({})`;
-			cursorOffset = -2;
+			const argumentsTemplate = value.name === 'contains' || value.name === 'startsWith'
+				? '{}, ""'
+				: value.name === 'in'
+					? '{}, '
+					: '{}';
+			replacement = `${value.name}(${argumentsTemplate})`;
+			cursorOffset = `${value.name}({`.length - replacement.length;
 		} else if (value.kind === 'display') {
 			replacement = value.name;
 		} else if (value.kind === 'property') {
