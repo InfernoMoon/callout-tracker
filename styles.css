@@ -88,7 +88,6 @@
 
 .callout-tracker__title--checked .callout-title-inner {
 	text-decoration: line-through;
-	text-decoration-thickness: 0.08em;
 }
 
 .callout-tracker__entry:hover,
