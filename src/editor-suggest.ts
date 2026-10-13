@@ -56,6 +56,18 @@ type DisplayOption = {
 	description: string;
 };
 
+type OrderByFunctionOption = {
+	kind: 'order-by-function';
+	name: 'asc' | 'desc';
+	description: string;
+};
+
+type OrderByFieldOption = {
+	kind: 'order-by-field';
+	name: string;
+	field: 'property' | 'title';
+};
+
 type PropertyOption = {
 	kind: 'property';
 	name: string;
@@ -70,6 +82,8 @@ type Suggestion =
 	| FilterDefinitionOption
 	| NamedFilterReferenceOption
 	| DisplayOption
+	| OrderByFunctionOption
+	| OrderByFieldOption
 	| PropertyOption;
 
 type SuggestionKind = Suggestion['kind'];
@@ -79,6 +93,7 @@ const OPTIONS: TrackerOption[] = [
 	{ kind: 'setting', key: 'rootfolder', label: 'rootfolder', description: 'Folder to search' },
 	{ kind: 'setting', key: 'search', label: 'search', description: 'Text to find in callout titles or bodies' },
 	{ kind: 'setting', key: 'summary', label: 'summary', description: 'Calculate a value from matching callouts' },
+	{ kind: 'setting', key: 'orderby', label: 'orderBy', description: 'Sort matching callouts by one property' },
 	{ kind: 'setting', key: 'display', label: 'display', description: 'Choose which results to render' },
 ];
 
@@ -124,6 +139,11 @@ const DISPLAY_OPTIONS: DisplayOption[] = [
 	{ kind: 'display', name: 'All', description: 'Show summaries and callouts' },
 	{ kind: 'display', name: 'OnlySummary', description: 'Show summaries only' },
 	{ kind: 'display', name: 'OnlyCallouts', description: 'Show callouts only' },
+];
+
+const ORDER_BY_FUNCTIONS: OrderByFunctionOption[] = [
+	{ kind: 'order-by-function', name: 'asc', description: 'Sort a property from lowest to highest' },
+	{ kind: 'order-by-function', name: 'desc', description: 'Sort a property from highest to lowest' },
 ];
 
 export function registerCalloutTrackerEditorSuggest(
@@ -179,6 +199,18 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			return summaryFunction;
 		}
 
+		const orderByField = getOrderByFieldTrigger(beforeCursor, cursor);
+		if (orderByField) {
+			this.suggestionKind = 'order-by-field';
+			return orderByField;
+		}
+
+		const orderByFunction = getOrderByFunctionTrigger(beforeCursor, cursor);
+		if (orderByFunction) {
+			this.suggestionKind = 'order-by-function';
+			return orderByFunction;
+		}
+
 		const filterFunction = getFilterFunctionTrigger(beforeCursor, cursor);
 		if (filterFunction) {
 			this.suggestionKind = 'filter-function';
@@ -227,6 +259,12 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		if (this.suggestionKind === 'display') {
 			return DISPLAY_OPTIONS.filter((option) => option.name.toLowerCase().startsWith(query));
 		}
+		if (this.suggestionKind === 'order-by-function') {
+			return ORDER_BY_FUNCTIONS.filter((option) => option.name.startsWith(query));
+		}
+		if (this.suggestionKind === 'order-by-field') {
+			return this.getOrderByFieldSuggestions(query);
+		}
 		if (this.suggestionKind === 'property') {
 			return this.getPropertySuggestions(context);
 		}
@@ -262,6 +300,22 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			}));
 	}
 
+	private async getOrderByFieldSuggestions(query: string): Promise<OrderByFieldOption[]> {
+		const propertyNames = await this.plugin.propertyIndex.getPropertyNames();
+		const fields: OrderByFieldOption[] = [
+			{ kind: 'order-by-field', name: 'title', field: 'title' },
+			...propertyNames
+				.filter((name) => name.toLowerCase() !== 'title')
+				.map((name): OrderByFieldOption => ({
+					kind: 'order-by-field',
+					name,
+					field: 'property',
+				})),
+		];
+
+		return fields.filter((field) => field.name.toLowerCase().startsWith(query));
+	}
+
 	renderSuggestion(value: Suggestion, element: HTMLElement): void {
 		if (value.kind === 'callout') {
 			element.createDiv({ text: value.name });
@@ -294,6 +348,15 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		if (value.kind === 'display') {
 			element.createDiv({ text: value.name });
 			element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
+			return;
+		}
+		if (value.kind === 'order-by-function') {
+			element.createDiv({ text: `${value.name}()` });
+			element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
+			return;
+		}
+		if (value.kind === 'order-by-field') {
+			element.createDiv({ text: value.field === 'title' ? value.name : `{${value.name}}` });
 			return;
 		}
 		if (value.kind === 'property') {
@@ -344,6 +407,10 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			replacement = value.name;
 		} else if (value.kind === 'display') {
 			replacement = value.name;
+		} else if (value.kind === 'order-by-function') {
+			replacement = `${value.name}(`;
+		} else if (value.kind === 'order-by-field') {
+			replacement = value.field === 'title' ? value.name : `{${value.name}}`;
 		} else if (value.kind === 'property') {
 			if (this.propertySuggestionMode === 'callout') {
 				const trigger = getCalloutPropertyTrigger(
@@ -400,7 +467,7 @@ function getExpressionPropertyTrigger(
 	cursor: EditorPosition,
 	beforeCursor: string,
 ): PropertyTrigger | null {
-	const settingMatch = beforeCursor.match(/^\s*(?:filter(?:\s+[A-Za-z][A-Za-z0-9_-]*)?|summary)\s*:\s*(.*)$/i);
+	const settingMatch = beforeCursor.match(/^\s*(?:filter(?:\s+[A-Za-z][A-Za-z0-9_-]*)?|summary|orderBy)\s*:\s*(.*)$/i);
 	if (!settingMatch || settingMatch[1] === undefined) {
 		return null;
 	}
@@ -426,6 +493,49 @@ function getExpressionPropertyTrigger(
 		hasDelimiterAfterCursor: false,
 		hasClosingBraceAfterCursor: closingBrace !== null,
 		closingBraceOffset: closingBrace?.[0].length ? closingBrace[0].length - 1 : 0,
+	};
+}
+
+function getOrderByFunctionTrigger(
+	beforeCursor: string,
+	cursor: EditorPosition,
+): EditorSuggestTriggerInfo | null {
+	const settingMatch = beforeCursor.match(/^\s*orderBy\s*:\s*(.*)$/i);
+	if (!settingMatch || settingMatch[1] === undefined || isInsideQuotedString(settingMatch[1])) {
+		return null;
+	}
+
+	const functionMatch = settingMatch[1].match(/(?:^|\s)([a-z]+)$/i);
+	if (!functionMatch || !functionMatch[1]) {
+		return null;
+	}
+
+	const query = functionMatch[1];
+	return {
+		start: { line: cursor.line, ch: cursor.ch - query.length },
+		end: cursor,
+		query,
+	};
+}
+
+function getOrderByFieldTrigger(
+	beforeCursor: string,
+	cursor: EditorPosition,
+): EditorSuggestTriggerInfo | null {
+	const settingMatch = beforeCursor.match(/^\s*orderBy\s*:\s*(?:asc|desc)\s*\(\s*(.*)$/i);
+	if (!settingMatch || settingMatch[1] === undefined || isInsideQuotedString(settingMatch[1])) {
+		return null;
+	}
+
+	const query = settingMatch[1];
+	if (!/^[^\s{}:]*$/i.test(query)) {
+		return null;
+	}
+
+	return {
+		start: { line: cursor.line, ch: cursor.ch - query.length },
+		end: cursor,
+		query,
 	};
 }
 

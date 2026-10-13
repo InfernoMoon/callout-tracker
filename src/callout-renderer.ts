@@ -11,6 +11,7 @@ import { applyCalloutCheckboxColor, updateSourceCheckbox } from './callout-check
 import { renderCalloutProperties } from './callout-properties';
 import { applyCalloutStyle, findCalloutStyle, normalizeIconName } from './callout-styles';
 import { findCallouts } from './callout-scanner';
+import { compareCalloutsByOrder, OrderByError, parseOrderBy } from './order-by';
 import { createPropertyFilter, createPropertyFilterMap, PropertyFilterError } from './property-filter';
 import { evaluateSummary, SummaryExpressionError } from './summary-evaluator';
 import type CalloutTrackerPlugin from './main';
@@ -50,6 +51,7 @@ function parseBlockConfig(
 		filter: '',
 		namedFilters: {},
 		summaries: [],
+		orderBy: '',
 		display: 'all',
 	};
 
@@ -80,6 +82,8 @@ function parseBlockConfig(
 			if (value) {
 				config.summaries.push(value);
 			}
+		} else if (key === 'orderby') {
+			config.orderBy = value;
 		} else if (key === 'display') {
 			config.display = parseDisplayMode(value);
 		}
@@ -100,6 +104,7 @@ async function renderCalloutTracker(
 	container.addClass('callout-tracker');
 
 	try {
+		const orderBy = parseOrderBy(config.orderBy);
 		const entries = await findCallouts(
 			app,
 			config.rootFolder,
@@ -135,15 +140,18 @@ async function renderCalloutTracker(
 		}
 
 		for (const calloutType of config.calloutTypes) {
-			const typeEntries = matchingEntries
-				.filter((entry) => entry.type === calloutType)
-				.sort((first, second) => getCheckboxOrder(first.checked) - getCheckboxOrder(second.checked));
+			const typeEntries = matchingEntries.filter((entry) => entry.type === calloutType);
+			typeEntries.sort((first, second) => orderBy
+				? compareCalloutsByOrder(first, second, orderBy)
+				: getCheckboxOrder(first.checked) - getCheckboxOrder(second.checked));
 			for (const entry of typeEntries) {
 				renderEntry(app, entry, customCallouts, container, context);
 			}
 		}
 	} catch (error) {
-		const message = error instanceof PropertyFilterError
+		const message = error instanceof OrderByError
+			? `Invalid orderBy: ${error.message}`
+			: error instanceof PropertyFilterError
 			? `Invalid filter: ${error.message}`
 			: error instanceof SummaryExpressionError
 				? `Invalid summary: ${error.message}`

@@ -1,4 +1,5 @@
 import { findCallouts } from './callout-scanner';
+import { compareCalloutsByOrder, parseOrderBy } from './order-by';
 import { createPropertyFilter, createPropertyFilterMap } from './property-filter';
 import { evaluateSummary } from './summary-evaluator';
 import type CalloutTrackerPlugin from './main';
@@ -12,6 +13,8 @@ export interface CalloutSearchOptions {
 	search?: string;
 	/** Supports comparisons, arithmetic, checkbox keywords such as checked and hasCheckbox, and filter functions such as exists({property}), missingOrEmpty({property}), and contains({property}, "text"). */
 	filter?: string;
+	/** Sorts results within each callout type with asc(title), desc(title), asc({property}), or desc({property}). Missing and empty values are placed last. */
+	orderBy?: string;
 }
 
 export interface CalloutSummaryOptions extends CalloutSearchOptions {
@@ -74,11 +77,12 @@ async function findMatchingEntries(
 	);
 	const typeOrder = new Map(calloutTypes.map((type, index) => [type, index]));
 
-	return filterEntries(entries, options.search, createPropertyFilter(options.filter)).sort(
-		(first, second) =>
-			(typeOrder.get(first.type) ?? Number.MAX_SAFE_INTEGER) -
-			(typeOrder.get(second.type) ?? Number.MAX_SAFE_INTEGER),
-	);
+	const orderBy = parseOrderBy(options.orderBy);
+	return filterEntries(entries, options.search, createPropertyFilter(options.filter)).sort((first, second) => {
+		const typeResult = (typeOrder.get(first.type) ?? Number.MAX_SAFE_INTEGER) -
+			(typeOrder.get(second.type) ?? Number.MAX_SAFE_INTEGER);
+		return typeResult || (orderBy ? compareCalloutsByOrder(first, second, orderBy) : 0);
+	});
 }
 
 function normalizeCalloutTypes(value: string[] | string | undefined): string[] {

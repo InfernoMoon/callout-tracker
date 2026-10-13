@@ -43,6 +43,19 @@ search: myfilter
 
 `search:` is optional. When present, only callouts whose header or body contains the search text are displayed. The search is case-insensitive.
 
+`orderBy:` is optional and sorts matching callouts within each callout type. Use one property or the callout title with `asc()` or `desc()`:
+
+````markdown
+```callout-tracker
+callouts: todo
+orderBy: asc({priority})
+```
+````
+
+`asc()` sorts from lowest to highest and `desc()` sorts from highest to lowest. Numbers are sorted numerically and text is sorted alphabetically. Callouts with a missing or empty property appear at the end. Only one `orderBy` expression is supported.
+
+Use `asc(title)` or `desc(title)` to sort by the callout title. Use braces for properties, such as `asc({priority})` or `desc({cost})`.
+
 In the settings, use **Ignore prefixes** to exclude matching file and folder names. Enter multiple prefixes separated by commas; whitespace around each value is removed. The field contains `_` by default.
 
 ## Customize callouts
@@ -214,9 +227,9 @@ await tracker.api.search({
 });
 ```
 
-The `callouts` and `search` options are optional. When omitted, the API uses the configured default root folder and the default callout types `idea`, `note`, and `todo`. The `filter` option supports the same expressions as a tracker block, including `exists`, `empty`, `contains`, `startsWith`, and `in`.
+The `callouts`, `search`, and `orderBy` options are optional. When omitted, the API uses the configured default root folder and the default callout types `idea`, `note`, and `todo`. The `filter` option supports the same expressions as a tracker block, including `exists`, `empty`, `contains`, `startsWith`, and `in`. `orderBy` accepts one `asc(title)`, `desc(title)`, `asc({property})`, or `desc({property})` expression; missing and empty values are returned last.
 
-Use `summarize()` when you want a calculated result together with the matching callouts. It uses the same `callouts`, `rootFolder`, `search`, and `filter` options:
+Use `summarize()` when you want a calculated result together with the matching callouts. It uses the same `callouts`, `rootFolder`, `search`, `filter`, and `orderBy` options:
 
 ```ts
 const summary = await tracker.api.summarize({
