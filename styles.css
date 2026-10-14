@@ -12,6 +12,24 @@
 	padding: 0.75em 1em;
 }
 
+.callout-tracker__group {
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	margin: 1em 0;
+	overflow: hidden;
+}
+
+.callout-tracker__group > summary {
+	cursor: pointer;
+	font-weight: var(--font-semibold);
+	padding: 0.65em 0.85em;
+}
+
+.callout-tracker__group-content {
+	padding: 0.1em 0.75em 0.5em;
+}
+
 .callout-tracker .callout-tracker__entry {
 	cursor: pointer;
 	margin: 0.5em 0 !important;

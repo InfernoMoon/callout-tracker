@@ -68,6 +68,17 @@ type OrderByFieldOption = {
 	field: 'property' | 'title';
 };
 
+type GroupByFunctionOption = {
+	kind: 'group-by-function';
+	name: 'asc' | 'desc';
+};
+
+type GroupByPropertyOption = {
+	kind: 'group-by-property';
+	name: string;
+	mode: 'direct' | 'function';
+};
+
 type PropertyOption = {
 	kind: 'property';
 	name: string;
@@ -84,6 +95,8 @@ type Suggestion =
 	| DisplayOption
 	| OrderByFunctionOption
 	| OrderByFieldOption
+	| GroupByFunctionOption
+	| GroupByPropertyOption
 	| PropertyOption;
 
 type SuggestionKind = Suggestion['kind'];
@@ -93,6 +106,7 @@ const OPTIONS: TrackerOption[] = [
 	{ kind: 'setting', key: 'rootfolder', label: 'rootfolder', description: 'Folder to search' },
 	{ kind: 'setting', key: 'search', label: 'search', description: 'Text to find in callout titles or bodies' },
 	{ kind: 'setting', key: 'summary', label: 'summary', description: 'Calculate a value from matching callouts' },
+	{ kind: 'setting', key: 'groupby', label: 'groupBy', description: 'Create collapsible groups by one property' },
 	{ kind: 'setting', key: 'orderby', label: 'orderBy', description: 'Sort matching callouts by one property' },
 	{ kind: 'setting', key: 'display', label: 'display', description: 'Choose which results to render' },
 ];
@@ -146,6 +160,11 @@ const ORDER_BY_FUNCTIONS: OrderByFunctionOption[] = [
 	{ kind: 'order-by-function', name: 'desc', description: 'Sort a property from highest to lowest' },
 ];
 
+const GROUP_BY_FUNCTIONS: GroupByFunctionOption[] = [
+	{ kind: 'group-by-function', name: 'asc' },
+	{ kind: 'group-by-function', name: 'desc' },
+];
+
 export function registerCalloutTrackerEditorSuggest(
 	plugin: CalloutTrackerPlugin,
 ): EditorSuggest<Suggestion> {
@@ -154,7 +173,8 @@ export function registerCalloutTrackerEditorSuggest(
 
 class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 	private suggestionKind: SuggestionKind = 'setting';
-	private propertySuggestionMode: 'expression' | 'callout' = 'expression';
+	private propertySuggestionMode: 'expression' | 'callout' | 'group-by-brace' = 'expression';
+	private groupBySuggestionContext: 'start' | 'function' = 'start';
 
 	constructor(private readonly plugin: CalloutTrackerPlugin) {
 		super(plugin.app);
@@ -171,6 +191,22 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 
 		const beforeCursor = editor.getLine(cursor.line).slice(0, cursor.ch);
 		const insideTrackerBlock = isInsideCalloutTrackerBlock(editor, cursor.line);
+		if (insideTrackerBlock) {
+			const groupByFunction = getGroupByFunctionTrigger(beforeCursor, cursor);
+			if (groupByFunction) {
+				this.suggestionKind = 'group-by-property';
+				this.groupBySuggestionContext = 'function';
+				return groupByFunction;
+			}
+
+			const groupByStart = getGroupByStartTrigger(beforeCursor, cursor);
+			if (groupByStart) {
+				this.suggestionKind = 'group-by-property';
+				this.groupBySuggestionContext = 'start';
+				return groupByStart;
+			}
+		}
+
 		const propertyTrigger = getPropertyTrigger(editor, cursor, beforeCursor);
 		if (propertyTrigger) {
 			this.suggestionKind = 'property';
@@ -265,6 +301,11 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		if (this.suggestionKind === 'order-by-field') {
 			return this.getOrderByFieldSuggestions(query);
 		}
+		if (this.suggestionKind === 'group-by-property') {
+			return this.groupBySuggestionContext === 'start'
+				? this.getGroupByStartSuggestions(query)
+				: this.getGroupByPropertySuggestions(query);
+		}
 		if (this.suggestionKind === 'property') {
 			return this.getPropertySuggestions(context);
 		}
@@ -316,6 +357,31 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		return fields.filter((field) => field.name.toLowerCase().startsWith(query));
 	}
 
+	private async getGroupByStartSuggestions(query: string): Promise<Suggestion[]> {
+		const propertyNames = await this.plugin.propertyIndex.getPropertyNames();
+		return [
+			...GROUP_BY_FUNCTIONS.filter((option) => option.name.startsWith(query)),
+			...propertyNames
+				.filter((name) => name.toLowerCase().startsWith(query))
+				.map((name): GroupByPropertyOption => ({
+					kind: 'group-by-property',
+					name,
+					mode: 'direct',
+				})),
+		];
+	}
+
+	private async getGroupByPropertySuggestions(query: string): Promise<GroupByPropertyOption[]> {
+		const propertyNames = await this.plugin.propertyIndex.getPropertyNames();
+		return propertyNames
+			.filter((name) => name.toLowerCase().startsWith(query))
+			.map((name): GroupByPropertyOption => ({
+				kind: 'group-by-property',
+				name,
+				mode: 'function',
+			}));
+	}
+
 	renderSuggestion(value: Suggestion, element: HTMLElement): void {
 		if (value.kind === 'callout') {
 			element.createDiv({ text: value.name });
@@ -359,8 +425,18 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			element.createDiv({ text: value.field === 'title' ? value.name : `{${value.name}}` });
 			return;
 		}
+		if (value.kind === 'group-by-function') {
+			element.createDiv({ text: `${value.name}(` });
+			return;
+		}
+		if (value.kind === 'group-by-property') {
+			element.createDiv({ text: `{${value.name}}` });
+			return;
+		}
 		if (value.kind === 'property') {
-			element.createDiv({ text: value.name });
+			element.createDiv({
+				text: this.propertySuggestionMode === 'group-by-brace' ? `{${value.name}}` : value.name,
+			});
 			return;
 		}
 
@@ -411,6 +487,10 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			replacement = `${value.name}(`;
 		} else if (value.kind === 'order-by-field') {
 			replacement = value.field === 'title' ? value.name : `{${value.name}}`;
+		} else if (value.kind === 'group-by-function') {
+			replacement = `${value.name}(`;
+		} else if (value.kind === 'group-by-property') {
+			replacement = value.mode === 'direct' ? `{${value.name}}` : `{${value.name}})`;
 		} else if (value.kind === 'property') {
 			if (this.propertySuggestionMode === 'callout') {
 				const trigger = getCalloutPropertyTrigger(
@@ -444,7 +524,7 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 }
 
 interface PropertyTrigger extends EditorSuggestTriggerInfo {
-	mode: 'expression' | 'callout';
+	mode: 'expression' | 'callout' | 'group-by-brace';
 	hasDelimiterAfterCursor: boolean;
 	hasClosingBraceAfterCursor: boolean;
 	closingBraceOffset: number;
@@ -467,7 +547,7 @@ function getExpressionPropertyTrigger(
 	cursor: EditorPosition,
 	beforeCursor: string,
 ): PropertyTrigger | null {
-	const settingMatch = beforeCursor.match(/^\s*(?:filter(?:\s+[A-Za-z][A-Za-z0-9_-]*)?|summary|orderBy)\s*:\s*(.*)$/i);
+	const settingMatch = beforeCursor.match(/^\s*(?:filter(?:\s+[A-Za-z][A-Za-z0-9_-]*)?|summary|groupBy|orderBy)\s*:\s*(.*)$/i);
 	if (!settingMatch || settingMatch[1] === undefined) {
 		return null;
 	}
@@ -489,10 +569,42 @@ function getExpressionPropertyTrigger(
 		start: { line: cursor.line, ch: cursor.ch - query.length },
 		end: cursor,
 		query,
-		mode: 'expression',
+		mode: /^\s*groupBy\s*:/i.test(beforeCursor) ? 'group-by-brace' : 'expression',
 		hasDelimiterAfterCursor: false,
 		hasClosingBraceAfterCursor: closingBrace !== null,
 		closingBraceOffset: closingBrace?.[0].length ? closingBrace[0].length - 1 : 0,
+	};
+}
+
+function getGroupByStartTrigger(
+	beforeCursor: string,
+	cursor: EditorPosition,
+): EditorSuggestTriggerInfo | null {
+	const match = beforeCursor.match(/^\s*groupBy\s*:\s*([a-z]*)$/i);
+	if (!match || match[1] === undefined) {
+		return null;
+	}
+
+	return {
+		start: { line: cursor.line, ch: cursor.ch - match[1].length },
+		end: cursor,
+		query: match[1],
+	};
+}
+
+function getGroupByFunctionTrigger(
+	beforeCursor: string,
+	cursor: EditorPosition,
+): EditorSuggestTriggerInfo | null {
+	const match = beforeCursor.match(/^\s*groupBy\s*:\s*(?:asc|desc)\s*\(\s*([a-z]*)$/i);
+	if (!match || match[1] === undefined) {
+		return null;
+	}
+
+	return {
+		start: { line: cursor.line, ch: cursor.ch - match[1].length },
+		end: cursor,
+		query: match[1],
 	};
 }
 

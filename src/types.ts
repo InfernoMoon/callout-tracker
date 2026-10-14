@@ -21,6 +21,7 @@ export interface CalloutTrackerBlockConfig {
 	filter: string;
 	namedFilters: Record<string, string>;
 	summaries: string[];
+	groupBy: string;
 	orderBy: string;
 	display: CalloutTrackerDisplayMode;
 }

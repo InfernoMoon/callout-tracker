@@ -56,6 +56,28 @@ orderBy: asc({priority})
 
 Use `asc(title)` or `desc(title)` to sort by the callout title. Use braces for properties, such as `asc({priority})` or `desc({cost})`.
 
+`groupBy:` is optional and creates collapsible sections based on one property. Without a direction, groups stay in first-seen order:
+
+````markdown
+```callout-tracker
+callouts: todo
+groupBy: {status}
+orderBy: asc({priority})
+```
+````
+
+Add `asc()` or `desc()` around the property to sort the groups alphabetically or numerically:
+
+````markdown
+```callout-tracker
+callouts: todo
+groupBy: asc({status})
+orderBy: asc({priority})
+```
+````
+
+`orderBy:` sorts callouts inside each group. Summaries ignore the groups and calculate over all matching callouts. Callouts with a missing or empty group property appear in a final `No value` group, regardless of group direction.
+
 In the settings, use **Ignore prefixes** to exclude matching file and folder names. Enter multiple prefixes separated by commas; whitespace around each value is removed. The field contains `_` by default.
 
 ## Customize callouts

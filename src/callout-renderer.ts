@@ -11,6 +11,7 @@ import { applyCalloutCheckboxColor, updateSourceCheckbox } from './callout-check
 import { renderCalloutProperties } from './callout-properties';
 import { applyCalloutStyle, findCalloutStyle, normalizeIconName } from './callout-styles';
 import { findCallouts } from './callout-scanner';
+import { groupCallouts, GroupByError, parseGroupBy } from './group-by';
 import { compareCalloutsByOrder, OrderByError, parseOrderBy } from './order-by';
 import { createPropertyFilter, createPropertyFilterMap, PropertyFilterError } from './property-filter';
 import { evaluateSummary, SummaryExpressionError } from './summary-evaluator';
@@ -51,6 +52,7 @@ function parseBlockConfig(
 		filter: '',
 		namedFilters: {},
 		summaries: [],
+		groupBy: '',
 		orderBy: '',
 		display: 'all',
 	};
@@ -82,6 +84,8 @@ function parseBlockConfig(
 			if (value) {
 				config.summaries.push(value);
 			}
+		} else if (key === 'groupby') {
+			config.groupBy = value;
 		} else if (key === 'orderby') {
 			config.orderBy = value;
 		} else if (key === 'display') {
@@ -104,6 +108,7 @@ async function renderCalloutTracker(
 	container.addClass('callout-tracker');
 
 	try {
+		const groupBy = parseGroupBy(config.groupBy);
 		const orderBy = parseOrderBy(config.orderBy);
 		const entries = await findCallouts(
 			app,
@@ -139,17 +144,37 @@ async function renderCalloutTracker(
 			return;
 		}
 
-		for (const calloutType of config.calloutTypes) {
-			const typeEntries = matchingEntries.filter((entry) => entry.type === calloutType);
-			typeEntries.sort((first, second) => orderBy
-				? compareCalloutsByOrder(first, second, orderBy)
-				: getCheckboxOrder(first.checked) - getCheckboxOrder(second.checked));
-			for (const entry of typeEntries) {
-				renderEntry(app, entry, customCallouts, container, context);
+		if (groupBy) {
+			for (const group of groupCallouts(matchingEntries, groupBy)) {
+				const groupContainer = container.createEl('details', {
+					cls: 'callout-tracker__group',
+				});
+				groupContainer.open = true;
+				groupContainer.createEl('summary', {
+					cls: 'callout-tracker__group-title',
+					text: group.label,
+				});
+				const groupContent = groupContainer.createDiv({ cls: 'callout-tracker__group-content' });
+				for (const entry of sortGroupEntries(group.entries, config.calloutTypes, orderBy)) {
+					renderEntry(app, entry, customCallouts, groupContent, context);
+				}
+			}
+		} else {
+			for (const calloutType of config.calloutTypes) {
+				const typeEntries = matchingEntries
+					.filter((entry) => entry.type === calloutType)
+					.sort((first, second) => orderBy
+						? compareCalloutsByOrder(first, second, orderBy)
+						: getCheckboxOrder(first.checked) - getCheckboxOrder(second.checked));
+				for (const entry of typeEntries) {
+					renderEntry(app, entry, customCallouts, container, context);
+				}
 			}
 		}
 	} catch (error) {
-		const message = error instanceof OrderByError
+		const message = error instanceof GroupByError
+			? `Invalid groupBy: ${error.message}`
+			: error instanceof OrderByError
 			? `Invalid orderBy: ${error.message}`
 			: error instanceof PropertyFilterError
 			? `Invalid filter: ${error.message}`
@@ -163,6 +188,26 @@ async function renderCalloutTracker(
 		});
 		new Notice(message);
 	}
+}
+
+function sortGroupEntries(
+	entries: CalloutEntry[],
+	calloutTypes: string[],
+	orderBy: ReturnType<typeof parseOrderBy>,
+): CalloutEntry[] {
+	const typeOrder = new Map(calloutTypes.map((type, index) => [type, index]));
+	return [...entries].sort((first, second) => {
+		if (orderBy) {
+			const orderResult = compareCalloutsByOrder(first, second, orderBy);
+			if (orderResult !== 0) {
+				return orderResult;
+			}
+		}
+
+		const typeResult = (typeOrder.get(first.type) ?? Number.MAX_SAFE_INTEGER) -
+			(typeOrder.get(second.type) ?? Number.MAX_SAFE_INTEGER);
+		return typeResult || getCheckboxOrder(first.checked) - getCheckboxOrder(second.checked);
+	});
 }
 
 function parseDisplayMode(value: string): CalloutTrackerDisplayMode {
