@@ -2,7 +2,7 @@ import { App, MarkdownPostProcessorContext, TFile } from 'obsidian';
 import type CalloutTrackerPlugin from './main';
 
 const TITLE_CHECKBOX_PATTERN = /^\s*\[([ xX])\](?:\s*(.*))?$/;
-const SOURCE_HEADER_PATTERN = /^(\s*>\s*\[![^\]\s]+\]\s*)\[([ xX])\]/;
+const SOURCE_HEADER_PATTERN = /^(\s*>\s*\[![^\]\s]+\](?:[+-])?\s*)\[([ xX])\]/;
 
 export function applyCalloutCheckboxColor(checkbox: HTMLInputElement, callout: HTMLElement): void {
 	const calloutColor = getComputedStyle(callout).getPropertyValue('--callout-color').trim();

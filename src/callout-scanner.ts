@@ -6,6 +6,7 @@ interface ParsedCalloutHeader {
 	type: string;
 	title: string;
 	checked?: boolean;
+	collapseState?: 'expanded' | 'collapsed';
 }
 
 export async function findCallouts(
@@ -89,6 +90,7 @@ function scanTextCallouts(
 			filePath: file.path,
 			...(includeLineNumbers ? { startLine: lineNumber } : {}),
 			...(header.checked === undefined ? {} : { checked: header.checked }),
+			...(header.collapseState === undefined ? {} : { collapseState: header.collapseState }),
 			title: header.title,
 			body: propertyBlock
 				? propertyBlock.remainingLines.join('\n').trim()
@@ -178,7 +180,16 @@ function parseCalloutHeader(line: string): ParsedCalloutHeader | null {
 		return null;
 	}
 
-	const afterType = calloutText.slice(closingBracket + 1);
+	let afterType = calloutText.slice(closingBracket + 1);
+	let collapseState: ParsedCalloutHeader['collapseState'];
+	if (afterType.startsWith('+')) {
+		collapseState = 'expanded';
+		afterType = afterType.slice(1);
+	} else if (afterType.startsWith('-')) {
+		collapseState = 'collapsed';
+		afterType = afterType.slice(1);
+	}
+
 	if (afterType.length > 0 && !/^\s/.test(afterType)) {
 		return null;
 	}
@@ -190,6 +201,7 @@ function parseCalloutHeader(line: string): ParsedCalloutHeader | null {
 		type,
 		title: checkbox?.[2]?.trim() ?? (checkbox ? '' : title),
 		...(checkbox ? { checked: checkbox[1]?.toLowerCase() === 'x' } : {}),
+		...(collapseState === undefined ? {} : { collapseState }),
 	};
 }
 

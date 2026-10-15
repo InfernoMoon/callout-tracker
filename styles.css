@@ -41,6 +41,32 @@
 	gap: 0.5em;
 }
 
+.callout-tracker__collapsible-title {
+	cursor: pointer;
+}
+
+.callout-tracker__collapse-icon {
+	align-items: center;
+	color: var(--text-muted);
+	display: inline-flex;
+	flex: 0 0 auto;
+	justify-content: center;
+	transition: transform 120ms ease;
+}
+
+.callout-tracker__collapse-icon svg {
+	height: 1em;
+	width: 1em;
+}
+
+.callout-tracker__entry--expanded .callout-tracker__collapse-icon {
+	transform: rotate(90deg);
+}
+
+.callout-tracker .callout-content[hidden] {
+	display: none;
+}
+
 .callout .callout-tracker__checkbox {
 	appearance: none;
 	-webkit-appearance: none;

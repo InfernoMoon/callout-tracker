@@ -18,6 +18,7 @@ import { evaluateSummary, SummaryExpressionError } from './summary-evaluator';
 import type CalloutTrackerPlugin from './main';
 import type {
 	CalloutEntry,
+	CalloutTrackerCollapseMode,
 	CalloutTrackerBlockConfig,
 	CalloutTrackerDisplayMode,
 	CustomCallout,
@@ -55,6 +56,7 @@ function parseBlockConfig(
 		groupBy: '',
 		orderBy: '',
 		display: 'all',
+		collapse: 'default',
 	};
 
 	for (const rawLine of source.split('\n')) {
@@ -90,6 +92,8 @@ function parseBlockConfig(
 			config.orderBy = value;
 		} else if (key === 'display') {
 			config.display = parseDisplayMode(value);
+		} else if (key === 'collapse') {
+			config.collapse = parseCollapseMode(value);
 		}
 	}
 
@@ -156,7 +160,7 @@ async function renderCalloutTracker(
 				});
 				const groupContent = groupContainer.createDiv({ cls: 'callout-tracker__group-content' });
 				for (const entry of sortGroupEntries(group.entries, config.calloutTypes, orderBy)) {
-					renderEntry(app, entry, customCallouts, groupContent, context);
+					renderEntry(app, entry, config.collapse, customCallouts, groupContent, context);
 				}
 			}
 		} else {
@@ -167,7 +171,7 @@ async function renderCalloutTracker(
 						? compareCalloutsByOrder(first, second, orderBy)
 						: getCheckboxOrder(first.checked) - getCheckboxOrder(second.checked));
 				for (const entry of typeEntries) {
-					renderEntry(app, entry, customCallouts, container, context);
+					renderEntry(app, entry, config.collapse, customCallouts, container, context);
 				}
 			}
 		}
@@ -221,6 +225,14 @@ function parseDisplayMode(value: string): CalloutTrackerDisplayMode {
 	return 'all';
 }
 
+function parseCollapseMode(value: string): CalloutTrackerCollapseMode {
+	const normalized = value.trim().toLowerCase();
+	if (normalized === 'collapsed' || normalized === 'expanded') {
+		return normalized;
+	}
+	return 'default';
+}
+
 function getCheckboxOrder(checked: boolean | undefined): number {
 	if (checked === undefined) {
 		return 0;
@@ -250,20 +262,36 @@ function getSearchableText(entry: CalloutEntry): string {
 function renderEntry(
 	app: App,
 	entry: CalloutEntry,
+	collapseMode: CalloutTrackerCollapseMode,
 	customCallouts: CustomCallout[],
 	container: HTMLElement,
 	context: MarkdownPostProcessorContext,
 ): void {
 	const item = container.createDiv({ cls: 'callout callout-tracker__entry' });
 	item.setAttr('data-callout', entry.type);
-	item.setAttr('role', 'button');
-	item.setAttr('tabindex', '0');
+	const collapseState = collapseMode === 'default' ? entry.collapseState : collapseMode;
+	const isCollapsible = collapseState !== undefined;
+	if (isCollapsible) {
+		item.addClass('callout-tracker__entry--collapsible');
+	} else {
+		item.setAttr('role', 'button');
+		item.setAttr('tabindex', '0');
+	}
 
 	const open = (): void => {
 		void openCallout(app, entry, context.sourcePath);
 	};
 
 	const titleEl = item.createDiv({ cls: 'callout-title' });
+	if (isCollapsible) {
+		titleEl.setAttr('role', 'button');
+		titleEl.setAttr('tabindex', '0');
+		titleEl.setAttr('aria-expanded', String(collapseState === 'expanded'));
+		titleEl.addClass('callout-tracker__collapsible-title');
+		const collapseIconEl = titleEl.createDiv({ cls: 'callout-tracker__collapse-icon' });
+		setIcon(collapseIconEl, 'chevron-right');
+		item.classList.toggle('callout-tracker__entry--expanded', collapseState === 'expanded');
+	}
 	const iconEl = titleEl.createDiv({ cls: 'callout-icon' });
 	titleEl.classList.toggle('callout-tracker__title--checked', entry.checked === true);
 	let checkbox: HTMLInputElement | null = null;
@@ -318,14 +346,44 @@ function renderEntry(
 		open();
 	});
 	item.addEventListener('click', open);
-	item.addEventListener('keydown', (event) => {
-		if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault();
-			open();
-		}
-	});
-
 	const contentEl = item.createDiv({ cls: 'callout-content' });
+	contentEl.hidden = collapseState === 'collapsed';
+	if (isCollapsible) {
+		const toggleCollapse = (): void => {
+			const isExpanded = titleEl.getAttribute('aria-expanded') === 'true';
+			const nextExpanded = !isExpanded;
+			titleEl.setAttr('aria-expanded', String(nextExpanded));
+			contentEl.hidden = !nextExpanded;
+			item.classList.toggle('callout-tracker__entry--expanded', nextExpanded);
+		};
+		titleEl.addEventListener('click', (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			toggleCollapse();
+		});
+		titleEl.addEventListener('keydown', (event) => {
+			if (
+				event.target instanceof HTMLElement &&
+				event.target !== titleEl &&
+				event.target.closest('a, input, button')
+			) {
+				return;
+			}
+			if (event.key === 'Enter' || event.key === ' ') {
+				event.preventDefault();
+				event.stopPropagation();
+				toggleCollapse();
+			}
+		});
+	} else {
+		item.addEventListener('keydown', (event) => {
+			if (event.key === 'Enter' || event.key === ' ') {
+				event.preventDefault();
+				open();
+			}
+		});
+	}
+
 	if (entry.properties.length > 0) {
 		renderCalloutProperties(contentEl, entry.properties);
 	}

@@ -28,6 +28,16 @@ Add `[ ]` or `[x]` immediately after the callout type to make a tracker result i
 
 The checkbox is displayed in Callout Tracker results. Clicking it updates the checkbox in the original Markdown callout. `[x]` and `[X]` are treated as checked.
 
+Obsidian's collapsible callout markers are also supported. Use `+` to start expanded or `-` to start collapsed. In Callout Tracker, select the callout header to toggle it; select the file and line link to open the source note.
+
+```markdown
+> [!todo]+ Open by default
+> This text starts visible.
+
+> [!todo]- Closed by default
+> This text starts hidden.
+```
+
 Add a `callout-tracker` code block to any note:
 ````markdown
 ```callout-tracker
@@ -42,6 +52,15 @@ search: myfilter
 `rootfolder:` limits the search to that folder and its subfolders. If it is omitted, Callout Tracker uses the default root folder from **Settings → Callout Tracker**. The setting is empty by default, which searches the whole vault.
 
 `search:` is optional. When present, only callouts whose header or body contains the search text are displayed. The search is case-insensitive.
+
+`collapse:` controls the initial state of callout results. `Default` preserves each callout's own behavior (`+` starts expanded, `-` starts collapsed, and unmarked callouts remain unchanged). `Collapsed` or `Expanded` makes all results collapsible and sets their initial state. This only affects the tracker display; it does not change the source callouts.
+
+````markdown
+```callout-tracker
+callouts: todo, idea
+collapse: Collapsed
+```
+````
 
 `orderBy:` is optional and sorts matching callouts within each callout type. Use one property or the callout title with `asc()` or `desc()`:
 

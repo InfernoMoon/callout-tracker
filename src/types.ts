@@ -8,6 +8,7 @@ export interface CalloutEntry {
 	filePath: string;
 	startLine?: number;
 	checked?: boolean;
+	collapseState?: 'expanded' | 'collapsed';
 	title: string;
 	body: string;
 	properties: CalloutProperty[];
@@ -24,9 +25,11 @@ export interface CalloutTrackerBlockConfig {
 	groupBy: string;
 	orderBy: string;
 	display: CalloutTrackerDisplayMode;
+	collapse: CalloutTrackerCollapseMode;
 }
 
 export type CalloutTrackerDisplayMode = 'all' | 'onlySummary' | 'onlyCallouts';
+export type CalloutTrackerCollapseMode = 'default' | 'collapsed' | 'expanded';
 
 export interface CustomCallout {
 	name: string;

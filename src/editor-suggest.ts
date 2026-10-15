@@ -56,6 +56,12 @@ type DisplayOption = {
 	description: string;
 };
 
+type CollapseOption = {
+	kind: 'collapse';
+	name: string;
+	description: string;
+};
+
 type OrderByFunctionOption = {
 	kind: 'order-by-function';
 	name: 'asc' | 'desc';
@@ -93,6 +99,7 @@ type Suggestion =
 	| FilterDefinitionOption
 	| NamedFilterReferenceOption
 	| DisplayOption
+	| CollapseOption
 	| OrderByFunctionOption
 	| OrderByFieldOption
 	| GroupByFunctionOption
@@ -109,6 +116,7 @@ const OPTIONS: TrackerOption[] = [
 	{ kind: 'setting', key: 'groupby', label: 'groupBy', description: 'Create collapsible groups by one property' },
 	{ kind: 'setting', key: 'orderby', label: 'orderBy', description: 'Sort matching callouts by one property' },
 	{ kind: 'setting', key: 'display', label: 'display', description: 'Choose which results to render' },
+	{ kind: 'setting', key: 'collapse', label: 'collapse', description: 'Choose the initial collapse state of callout results' },
 ];
 
 const SUMMARY_FUNCTIONS: SummaryFunctionOption[] = [
@@ -153,6 +161,12 @@ const DISPLAY_OPTIONS: DisplayOption[] = [
 	{ kind: 'display', name: 'All', description: 'Show summaries and callouts' },
 	{ kind: 'display', name: 'OnlySummary', description: 'Show summaries only' },
 	{ kind: 'display', name: 'OnlyCallouts', description: 'Show callouts only' },
+];
+
+const COLLAPSE_OPTIONS: CollapseOption[] = [
+	{ kind: 'collapse', name: 'Default', description: 'Preserve each callout’s own collapse behavior' },
+	{ kind: 'collapse', name: 'Collapsed', description: 'Start all results collapsed' },
+	{ kind: 'collapse', name: 'Expanded', description: 'Start all results expanded' },
 ];
 
 const ORDER_BY_FUNCTIONS: OrderByFunctionOption[] = [
@@ -259,6 +273,12 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			return displayValue;
 		}
 
+		const collapseValue = getCollapseValueTrigger(beforeCursor, cursor);
+		if (collapseValue) {
+			this.suggestionKind = 'collapse';
+			return collapseValue;
+		}
+
 		const match = beforeCursor.match(/^\s*([a-z]*)$/i);
 		if (!match) {
 			return null;
@@ -294,6 +314,9 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		}
 		if (this.suggestionKind === 'display') {
 			return DISPLAY_OPTIONS.filter((option) => option.name.toLowerCase().startsWith(query));
+		}
+		if (this.suggestionKind === 'collapse') {
+			return COLLAPSE_OPTIONS.filter((option) => option.name.toLowerCase().startsWith(query));
 		}
 		if (this.suggestionKind === 'order-by-function') {
 			return ORDER_BY_FUNCTIONS.filter((option) => option.name.startsWith(query));
@@ -416,6 +439,11 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 			element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
 			return;
 		}
+		if (value.kind === 'collapse') {
+			element.createDiv({ text: value.name });
+			element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
+			return;
+		}
 		if (value.kind === 'order-by-function') {
 			element.createDiv({ text: `${value.name}()` });
 			element.createDiv({ text: value.description, cls: 'callout-tracker__suggestion-description' });
@@ -482,6 +510,8 @@ class CalloutTrackerEditorSuggest extends EditorSuggest<Suggestion> {
 		} else if (value.kind === 'named-filter-reference') {
 			replacement = value.name;
 		} else if (value.kind === 'display') {
+			replacement = value.name;
+		} else if (value.kind === 'collapse') {
 			replacement = value.name;
 		} else if (value.kind === 'order-by-function') {
 			replacement = `${value.name}(`;
@@ -754,7 +784,7 @@ function stripEditorQuoteMarker(line: string): string {
 }
 
 function isEditorCalloutHeader(line: string): boolean {
-	return /^\s*>\s*\[![^\]\s]+\](?:\s|$)/.test(line);
+	return /^\s*>\s*\[![^\]\s]+\](?:[+-])?(?:\s|$)/.test(line);
 }
 
 function getCalloutValueTrigger(
@@ -898,6 +928,24 @@ function getDisplayValueTrigger(
 	cursor: EditorPosition,
 ): EditorSuggestTriggerInfo | null {
 	const settingMatch = beforeCursor.match(/^\s*display\s*:\s*(.*)$/i);
+	if (!settingMatch || settingMatch[1] === undefined) {
+		return null;
+	}
+
+	const value = settingMatch[1];
+	const query = value.match(/[A-Za-z]*$/)?.[0] ?? '';
+	return {
+		start: { line: cursor.line, ch: cursor.ch - query.length },
+		end: cursor,
+		query,
+	};
+}
+
+function getCollapseValueTrigger(
+	beforeCursor: string,
+	cursor: EditorPosition,
+): EditorSuggestTriggerInfo | null {
+	const settingMatch = beforeCursor.match(/^\s*collapse\s*:\s*(.*)$/i);
 	if (!settingMatch || settingMatch[1] === undefined) {
 		return null;
 	}
