@@ -204,6 +204,26 @@
 	padding-top: 0.25em;
 }
 
+.callout-tracker__custom-callouts-setting {
+	align-items: start;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.callout-tracker__custom-callouts-setting > .setting-item-control {
+	align-self: start;
+	grid-column: 2;
+	grid-row: 1;
+}
+
+.callout-tracker__custom-callouts-setting > .callout-tracker__custom-callouts {
+	grid-column: 1 / -1;
+}
+
+.callout-tracker__custom-callouts {
+	width: 100%;
+}
+
 .callout .callout-properties {
 	display: flex;
 	flex-wrap: wrap;

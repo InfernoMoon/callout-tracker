@@ -88,7 +88,10 @@ export default class CalloutTrackerPlugin extends Plugin {
 			this.calloutStyleManager.applyToElement(element);
 		});
 		registerCalloutCheckboxPostProcessor(this);
-		this.calloutStyleManager.update(this.settings.customCallouts);
+		this.calloutStyleManager.update(
+			this.settings.customCallouts,
+			this.settings.keepPropertiesVisibleWhenCollapsed,
+		);
 
 		registerCalloutTrackerProcessor(this);
 		this.registerEditorSuggest(registerCalloutTrackerEditorSuggest(this));
@@ -102,7 +105,10 @@ export default class CalloutTrackerPlugin extends Plugin {
 	}
 
 	updateCalloutStyles(): void {
-		this.calloutStyleManager.update(this.settings.customCallouts);
+		this.calloutStyleManager.update(
+			this.settings.customCallouts,
+			this.settings.keepPropertiesVisibleWhenCollapsed,
+		);
 	}
 }
 

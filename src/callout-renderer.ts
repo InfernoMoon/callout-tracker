@@ -35,6 +35,7 @@ export function registerCalloutTrackerProcessor(plugin: CalloutTrackerPlugin): v
 				parseBlockConfig(source, plugin.settings.rootFolder),
 				plugin.settings.ignoredPrefixes,
 				plugin.settings.customCallouts,
+				plugin.settings.keepPropertiesVisibleWhenCollapsed,
 				container,
 				context,
 			);
@@ -105,6 +106,7 @@ async function renderCalloutTracker(
 	config: CalloutTrackerBlockConfig,
 	ignoredPrefixes: string[],
 	customCallouts: CustomCallout[],
+	keepPropertiesVisibleWhenCollapsed: boolean,
 	container: HTMLElement,
 	context: MarkdownPostProcessorContext,
 ): Promise<void> {
@@ -160,7 +162,15 @@ async function renderCalloutTracker(
 				});
 				const groupContent = groupContainer.createDiv({ cls: 'callout-tracker__group-content' });
 				for (const entry of sortGroupEntries(group.entries, config.calloutTypes, orderBy)) {
-					renderEntry(app, entry, config.collapse, customCallouts, groupContent, context);
+					renderEntry(
+						app,
+						entry,
+						config.collapse,
+						customCallouts,
+						keepPropertiesVisibleWhenCollapsed,
+						groupContent,
+						context,
+					);
 				}
 			}
 		} else {
@@ -171,7 +181,15 @@ async function renderCalloutTracker(
 						? compareCalloutsByOrder(first, second, orderBy)
 						: getCheckboxOrder(first.checked) - getCheckboxOrder(second.checked));
 				for (const entry of typeEntries) {
-					renderEntry(app, entry, config.collapse, customCallouts, container, context);
+					renderEntry(
+						app,
+						entry,
+						config.collapse,
+						customCallouts,
+						keepPropertiesVisibleWhenCollapsed,
+						container,
+						context,
+					);
 				}
 			}
 		}
@@ -264,6 +282,7 @@ function renderEntry(
 	entry: CalloutEntry,
 	collapseMode: CalloutTrackerCollapseMode,
 	customCallouts: CustomCallout[],
+	keepPropertiesVisibleWhenCollapsed: boolean,
 	container: HTMLElement,
 	context: MarkdownPostProcessorContext,
 ): void {
@@ -346,6 +365,9 @@ function renderEntry(
 		open();
 	});
 	item.addEventListener('click', open);
+	if (keepPropertiesVisibleWhenCollapsed && entry.properties.length > 0) {
+		renderCalloutProperties(item, entry.properties);
+	}
 	const contentEl = item.createDiv({ cls: 'callout-content' });
 	contentEl.hidden = collapseState === 'collapsed';
 	if (isCollapsible) {
@@ -383,8 +405,7 @@ function renderEntry(
 			}
 		});
 	}
-
-	if (entry.properties.length > 0) {
+	if (!keepPropertiesVisibleWhenCollapsed && entry.properties.length > 0) {
 		renderCalloutProperties(contentEl, entry.properties);
 	}
 

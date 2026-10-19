@@ -5,11 +5,13 @@ import type { CustomCallout } from './types';
 
 export class CalloutStyleManager {
 	private callouts: CustomCallout[] = [];
+	private keepPropertiesVisibleWhenCollapsed = false;
 
 	constructor(private readonly app: App) {}
 
-	update(callouts: CustomCallout[]): void {
+	update(callouts: CustomCallout[], keepPropertiesVisibleWhenCollapsed = false): void {
 		this.callouts = callouts;
+		this.keepPropertiesVisibleWhenCollapsed = keepPropertiesVisibleWhenCollapsed;
 		this.rerenderOpenNotes();
 	}
 
@@ -24,7 +26,7 @@ export class CalloutStyleManager {
 				applyCalloutStyle(element, callout);
 			}
 			if (!element.closest('.callout-tracker')) {
-				applyCalloutProperties(element);
+				applyCalloutProperties(element, this.keepPropertiesVisibleWhenCollapsed);
 			}
 		}
 	}
@@ -55,7 +57,7 @@ export function applyCalloutStyle(element: HTMLElement, callout: CustomCallout):
 
 	if (fontColor) {
 		setDynamicCssProp(element, 'color', fontColor);
-		for (const child of element.findAll('.callout-title, .callout-content')) {
+		for (const child of element.findAll('.callout-title, .callout-content, .callout-properties')) {
 			setDynamicCssProp(child, 'color', fontColor);
 		}
 	}
@@ -86,10 +88,18 @@ export function applyCalloutStyle(element: HTMLElement, callout: CustomCallout):
 	}
 }
 
-function applyCalloutProperties(element: HTMLElement): void {
+function applyCalloutProperties(
+	element: HTMLElement,
+	keepPropertiesVisibleWhenCollapsed: boolean,
+): void {
 	const content = element.querySelector<HTMLElement>(':scope > .callout-content');
 	const firstChild = content?.firstElementChild;
-	if (!content || !firstChild || firstChild.classList.contains('callout-properties')) {
+	if (
+		!content ||
+		!firstChild ||
+		element.querySelector(':scope > .callout-properties') ||
+		firstChild.classList.contains('callout-properties')
+	) {
 		return;
 	}
 
@@ -100,8 +110,9 @@ function applyCalloutProperties(element: HTMLElement): void {
 		return;
 	}
 
-	const propertyContainer = renderCalloutProperties(content, propertyBlock.properties);
-	content.insertBefore(propertyContainer, firstChild);
+	const propertyParent = keepPropertiesVisibleWhenCollapsed ? element : content;
+	const propertyContainer = renderCalloutProperties(propertyParent, propertyBlock.properties);
+	propertyParent.insertBefore(propertyContainer, keepPropertiesVisibleWhenCollapsed ? content : firstChild);
 	if (propertyBlock.remainingLines.length > 0) {
 		const tagName = firstChild.tagName.toLowerCase() as keyof HTMLElementTagNameMap;
 		const remainingContent = content.createEl(tagName);

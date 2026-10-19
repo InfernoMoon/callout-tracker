@@ -2,7 +2,7 @@
 
 ## Default mode
 
-Expected: **Open by default** starts expanded, **Closed by default** starts collapsed, and **No collapse marker** stays non-collapsible. The file link opens each source callout.
+Expected: **Open by default** starts expanded, **Closed by default** starts collapsed, and **No collapse marker** stays non-collapsible. Properties remain visible even when a result is collapsed. The file link opens each source callout.
 
 ```callout-tracker
 callouts: testCollapse
@@ -33,6 +33,7 @@ collapse: Expanded
 > This body should be visible when the tracker renders.
 
 > [!testCollapse]- Closed by default
+> status:: visible while collapsed
 > This body should be hidden until the tracker header is selected.
 
 > [!testCollapse] No collapse marker
@@ -42,4 +43,5 @@ collapse: Expanded
 > The checkbox should update the source while preserving the plus marker.
 
 > [!testCollapse]- [x] Closed with checkbox
+> status:: visible while collapsed
 > The checkbox should update the source while preserving the minus marker.

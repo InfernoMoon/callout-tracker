@@ -7,6 +7,7 @@ import type { CalloutInsertTemplate, CalloutProperty, CustomCallout } from './ty
 export interface CalloutTrackerSettings {
 	rootFolder: string;
 	ignoredPrefixes: string[];
+	keepPropertiesVisibleWhenCollapsed: boolean;
 	customCallouts: CustomCallout[];
 	lastUsedCalloutType: string;
 	lastUsedAddCheckbox: boolean;
@@ -102,6 +103,7 @@ export const DEFAULT_CUSTOM_CALLOUTS: CustomCallout[] = [
 export const DEFAULT_SETTINGS: CalloutTrackerSettings = {
 	rootFolder: '',
 	ignoredPrefixes: ['_'],
+	keepPropertiesVisibleWhenCollapsed: false,
 	customCallouts: DEFAULT_CUSTOM_CALLOUTS,
 	lastUsedCalloutType: 'todo',
 	lastUsedAddCheckbox: false,
@@ -138,9 +140,17 @@ export class CalloutTrackerSettingTab extends PluginSettingTab {
 				},
 			},
 			{
+				name: 'Keep properties visible when collapsed',
+				desc: 'Keep callout properties visible while the rest of a collapsed callout is hidden.',
+				render: (setting: Setting): void => {
+					addKeepPropertiesVisibleWhenCollapsedControl(setting, this.plugin);
+				},
+			},
+			{
 				name: 'Custom callouts',
 				desc: 'Define the appearance of native Obsidian callouts by name.',
 				render: (setting: Setting): void => {
+					setting.settingEl.addClass('callout-tracker__custom-callouts-setting');
 					setting.addButton((button) =>
 						button
 							.setButtonText('Add custom callout')
@@ -153,9 +163,13 @@ export class CalloutTrackerSettingTab extends PluginSettingTab {
 							}),
 					);
 
-					const customCalloutsEl = (setting.settingEl.parentElement ?? setting.settingEl).createDiv({
-						cls: 'callout-tracker__custom-callouts',
-					});
+					const customCalloutsEl =
+						setting.settingEl.querySelector<HTMLElement>(
+							':scope > .callout-tracker__custom-callouts',
+						) ?? setting.settingEl.createDiv({
+							cls: 'callout-tracker__custom-callouts',
+						});
+					customCalloutsEl.empty();
 					for (const [index, callout] of this.plugin.settings.customCallouts.entries()) {
 						renderCustomCallout(this.plugin, customCalloutsEl, callout, index, this);
 					}
@@ -179,6 +193,11 @@ export class CalloutTrackerSettingTab extends PluginSettingTab {
 			.setName('Ignore prefixes')
 			.setDesc('Skip files and folders whose names start with one of these prefixes.');
 		addIgnoredPrefixesControl(ignoredPrefixesSetting, this.plugin);
+
+		const keepPropertiesVisibleSetting = new Setting(containerEl)
+			.setName('Keep properties visible when collapsed')
+			.setDesc('Keep callout properties visible while the rest of a collapsed callout is hidden.');
+		addKeepPropertiesVisibleWhenCollapsedControl(keepPropertiesVisibleSetting, this.plugin);
 
 		new Setting(containerEl)
 			.setName('Custom callouts')
@@ -233,6 +252,21 @@ function addIgnoredPrefixesControl(setting: Setting, plugin: CalloutTrackerPlugi
 			.onChange(async (value) => {
 				plugin.settings.ignoredPrefixes = parsePrefixList(value);
 				await plugin.saveSettings();
+			}),
+	);
+}
+
+function addKeepPropertiesVisibleWhenCollapsedControl(
+	setting: Setting,
+	plugin: CalloutTrackerPlugin,
+): void {
+	setting.addToggle((toggle) =>
+		toggle
+			.setValue(plugin.settings.keepPropertiesVisibleWhenCollapsed)
+			.onChange(async (value) => {
+				plugin.settings.keepPropertiesVisibleWhenCollapsed = value;
+				await plugin.saveSettings();
+				plugin.updateCalloutStyles();
 			}),
 	);
 }
