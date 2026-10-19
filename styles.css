@@ -13,7 +13,6 @@
 }
 
 .callout-tracker__group {
-	background-color: var(--background-secondary);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-s);
 	margin: 1em 0;
