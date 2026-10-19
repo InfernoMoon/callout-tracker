@@ -3,6 +3,18 @@ export interface CalloutProperty {
 	value: string;
 }
 
+export interface CalloutInsertTemplate {
+	name: string;
+	calloutType: string;
+	title: string;
+	content: string;
+	hasCheckbox: boolean;
+	checkboxStartsChecked: boolean;
+	isCollapsible: boolean;
+	startsCollapsed: boolean;
+	properties: CalloutProperty[];
+}
+
 export interface CalloutEntry {
 	fileName: string;
 	filePath: string;

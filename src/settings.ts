@@ -2,13 +2,33 @@ import { App, PluginSettingTab, Setting, setIcon } from 'obsidian';
 import { applyCalloutStyle, normalizeIconName } from './callout-styles';
 import { CalloutIconSuggest } from './icon-suggest';
 import type CalloutTrackerPlugin from './main';
-import type { CustomCallout } from './types';
+import type { CalloutInsertTemplate, CalloutProperty, CustomCallout } from './types';
 
 export interface CalloutTrackerSettings {
 	rootFolder: string;
 	ignoredPrefixes: string[];
 	customCallouts: CustomCallout[];
+	lastUsedCalloutType: string;
+	lastUsedAddCheckbox: boolean;
+	lastUsedCheckboxChecked: boolean;
+	lastUsedCalloutIsCollapsible: boolean;
+	lastUsedCalloutStartsCollapsed: boolean;
+	lastUsedProperties: CalloutProperty[];
+	calloutInsertTemplates: CalloutInsertTemplate[];
+	hasInitializedCalloutTemplateDefaults: boolean;
 }
+
+export const DEFAULT_CALLOUT_INSERT_TEMPLATE: CalloutInsertTemplate = {
+	name: 'MyToDo',
+	calloutType: 'todo',
+	title: 'ToDo: ',
+	content: '',
+	hasCheckbox: true,
+	checkboxStartsChecked: false,
+	isCollapsible: true,
+	startsCollapsed: true,
+	properties: [{ key: 'priority', value: '' }],
+};
 
 export const DEFAULT_CUSTOM_CALLOUTS: CustomCallout[] = [
 	{
@@ -83,6 +103,14 @@ export const DEFAULT_SETTINGS: CalloutTrackerSettings = {
 	rootFolder: '',
 	ignoredPrefixes: ['_'],
 	customCallouts: DEFAULT_CUSTOM_CALLOUTS,
+	lastUsedCalloutType: 'todo',
+	lastUsedAddCheckbox: false,
+	lastUsedCheckboxChecked: false,
+	lastUsedCalloutIsCollapsible: false,
+	lastUsedCalloutStartsCollapsed: false,
+	lastUsedProperties: [],
+	calloutInsertTemplates: [DEFAULT_CALLOUT_INSERT_TEMPLATE],
+	hasInitializedCalloutTemplateDefaults: true,
 };
 
 export class CalloutTrackerSettingTab extends PluginSettingTab {

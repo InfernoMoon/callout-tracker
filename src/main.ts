@@ -4,9 +4,11 @@ import type { CalloutTrackerApi } from './api';
 import { registerCalloutTrackerProcessor } from './callout-renderer';
 import { registerCalloutCheckboxPostProcessor } from './callout-checkbox';
 import { registerCalloutTrackerEditorSuggest } from './editor-suggest';
+import { registerInsertCalloutCommand } from './commands/insert-callout';
 import { CalloutStyleManager } from './callout-styles';
 import { CalloutPropertyIndex } from './property-index';
 import {
+	DEFAULT_CALLOUT_INSERT_TEMPLATE,
 	DEFAULT_SETTINGS,
 	CalloutTrackerSettings,
 	CalloutTrackerSettingTab,
@@ -29,6 +31,24 @@ export default class CalloutTrackerPlugin extends Plugin {
 		this.settings.customCallouts = this.settings.customCallouts.map((callout) => ({
 			...callout,
 		}));
+		this.settings.calloutInsertTemplates = this.settings.calloutInsertTemplates.map((template) => ({
+			...template,
+			isCollapsible: template.isCollapsible ?? false,
+			startsCollapsed: template.startsCollapsed ?? false,
+			properties: template.properties.map((property) => ({ ...property })),
+		}));
+		if (!savedSettings?.hasInitializedCalloutTemplateDefaults) {
+			const hasMyToDoTemplate = this.settings.calloutInsertTemplates.some(
+				(template) => template.name.toLocaleLowerCase() === DEFAULT_CALLOUT_INSERT_TEMPLATE.name.toLocaleLowerCase(),
+			);
+			if (!hasMyToDoTemplate) {
+				this.settings.calloutInsertTemplates.push({
+					...DEFAULT_CALLOUT_INSERT_TEMPLATE,
+					properties: DEFAULT_CALLOUT_INSERT_TEMPLATE.properties.map((property) => ({ ...property })),
+				});
+			}
+			this.settings.hasInitializedCalloutTemplateDefaults = true;
+		}
 		this.api = createCalloutTrackerApi(this);
 		this.propertyIndex = new CalloutPropertyIndex(
 			this.app,
@@ -72,6 +92,7 @@ export default class CalloutTrackerPlugin extends Plugin {
 
 		registerCalloutTrackerProcessor(this);
 		this.registerEditorSuggest(registerCalloutTrackerEditorSuggest(this));
+		registerInsertCalloutCommand(this);
 		this.addSettingTab(new CalloutTrackerSettingTab(this.app, this));
 	}
 

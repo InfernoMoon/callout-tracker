@@ -232,3 +232,162 @@
 .callout .callout-property-value {
 	color: inherit;
 }
+.callout-tracker-insert-callout-modal .callout-tracker-insert-type-setting,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-template-setting,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-title-setting,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-content-setting,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-checkbox-setting,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-collapsible-setting,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-properties-setting {
+	display: grid;
+	grid-template-columns: minmax(0, 21%) minmax(0, 1fr);
+	align-items: center;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-content-setting {
+	align-items: start;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-type-setting .setting-item-info,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-template-setting .setting-item-info,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-title-setting .setting-item-info,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-content-setting .setting-item-info,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-checkbox-setting .setting-item-info,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-collapsible-setting .setting-item-info,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-properties-setting .setting-item-info {
+	grid-column: 1;
+	min-width: 0;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-type-setting .setting-item-control,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-template-setting .setting-item-control,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-title-setting .setting-item-control,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-content-setting .setting-item-control,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-checkbox-setting .setting-item-control,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-collapsible-setting .setting-item-control,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-properties-setting .setting-item-control {
+	display: flex;
+	grid-column: 2;
+	flex: initial;
+	justify-content: flex-start;
+	min-width: 0;
+	width: 100%;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-type-setting .setting-item-control {
+	gap: var(--size-4-2);
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-template-setting .dropdown {
+	flex: 0 1 14rem;
+	min-width: 0;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-template-label {
+	color: var(--text-muted);
+	white-space: nowrap;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-template-setting .setting-item-info {
+	display: none;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-template-setting .setting-item-control {
+	grid-column: 2;
+	justify-content: flex-end;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-type-setting .dropdown {
+	flex: 0 0 8rem;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-type-setting .setting-input {
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-title-setting .setting-input {
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-type-setting .setting-input,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-title-setting .setting-input {
+	box-sizing: border-box;
+	max-width: none !important;
+	width: 100% !important;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-content-setting textarea {
+	box-sizing: border-box;
+	min-height: 8rem;
+	min-width: 0;
+	resize: none;
+	width: 100%;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-checkbox-options {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--size-4-6);
+	min-width: 0;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-checkbox-option {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	white-space: nowrap;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-checkbox-option.is-disabled {
+	color: var(--text-faint);
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-properties {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	margin-left: 21%;
+	width: 79%;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-property-row {
+	display: flex;
+	gap: var(--size-4-2);
+	min-width: 0;
+	width: 100%;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-property-name,
+.callout-tracker-insert-callout-modal .callout-tracker-insert-property-value {
+	box-sizing: border-box;
+	flex: 1 1 0;
+	min-width: 0;
+	width: 100%;
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-footer {
+	align-items: center;
+	display: flex;
+	justify-content: space-between;
+	margin-top: var(--size-4-4);
+	padding-top: var(--size-4-4);
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-footer-actions {
+	align-items: center;
+	display: flex;
+	gap: var(--size-4-2);
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-template-actions {
+	align-items: center;
+	display: flex;
+	gap: var(--size-4-2);
+}
+
+.callout-tracker-insert-callout-modal .callout-tracker-insert-template-actions button[hidden] {
+	display: none;
+}

@@ -19,6 +19,10 @@ Write callouts where the ideas, tasks, or notes naturally belong:
 > [!todo] Finish the draft
 ```
 
+To insert a callout at the editor cursor, run **Callout Tracker: Insert callout** from the Command Palette. Choose a callout type or enter a custom one. The command remembers the last input.
+
+Set properties, add a checkbox, or choose whether the callout is collapsible. Save the fields as a template to quickly create similar callouts later.
+
 Add a `callout-tracker` block to a note to create a clickable overview:
 
 ````markdown
