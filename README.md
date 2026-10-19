@@ -228,6 +228,8 @@ orderBy: asc({priority})
 
 Choose the initial state of callout results. `Default` preserves each source callout’s behavior (`+` starts expanded, `-` starts collapsed, and unmarked callouts stay unchanged). `Collapsed` or `Expanded` makes all tracker results collapsible and sets their initial state. This changes only the tracker display, not the source callouts.
 
+When `collapse:` is present, a control appears above the results to expand or collapse all callouts. In `Default` mode, unmarked callouts can also be toggled from the tracker. The control expands everything unless all callouts are already expanded, in which case it collapses everything.
+
 ````markdown
 ```callout-tracker
 callouts: todo, idea

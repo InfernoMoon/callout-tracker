@@ -12,6 +12,41 @@
 	padding: 0.75em 1em;
 }
 
+.callout-tracker__collapse-all {
+	align-items: center;
+	background: transparent;
+	border: 0;
+	box-shadow: none;
+	color: var(--text-faint);
+	cursor: pointer;
+	display: flex;
+	font-size: var(--font-ui-smaller);
+	gap: 0.25em;
+	justify-content: flex-start;
+	margin: 0 0 0.5em;
+	opacity: 0.78;
+	padding: 0.15em 0.25em;
+	transition: color 120ms ease, opacity 120ms ease;
+	width: 100%;
+}
+
+.callout-tracker__collapse-all:hover,
+.callout-tracker__collapse-all:focus-visible {
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-muted);
+	opacity: 1;
+}
+
+.callout-tracker__collapse-all-icon {
+	display: inline-flex;
+}
+
+.callout-tracker__collapse-all-icon svg {
+	height: 1.4em;
+	width: 1.4em;
+}
+
 .callout-tracker__group {
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-s);

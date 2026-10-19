@@ -58,6 +58,7 @@ function parseBlockConfig(
 		orderBy: '',
 		display: 'all',
 		collapse: 'default',
+		collapseSpecified: false,
 	};
 
 	for (const rawLine of source.split('\n')) {
@@ -95,6 +96,7 @@ function parseBlockConfig(
 			config.display = parseDisplayMode(value);
 		} else if (key === 'collapse') {
 			config.collapse = parseCollapseMode(value);
+			config.collapseSpecified = true;
 		}
 	}
 
@@ -125,6 +127,11 @@ async function renderCalloutTracker(
 		const filterPredicate = createPropertyFilter(config.filter);
 		const matchingEntries = filterEntries(entries, config.search, filterPredicate);
 		const namedFilters = createPropertyFilterMap(config.namedFilters);
+		const globalCollapseButton = config.collapseSpecified &&
+			config.display !== 'onlySummary' &&
+			matchingEntries.length > 0
+			? createGlobalCollapseButton(container)
+			: null;
 		if (config.display !== 'onlyCallouts') {
 			for (const summary of config.summaries) {
 				container.createDiv({
@@ -170,6 +177,10 @@ async function renderCalloutTracker(
 						keepPropertiesVisibleWhenCollapsed,
 						groupContent,
 						context,
+						Boolean(globalCollapseButton),
+						globalCollapseButton
+							? () => updateGlobalCollapseButton(globalCollapseButton, container)
+							: undefined,
 					);
 				}
 			}
@@ -189,9 +200,16 @@ async function renderCalloutTracker(
 						keepPropertiesVisibleWhenCollapsed,
 						container,
 						context,
+						Boolean(globalCollapseButton),
+						globalCollapseButton
+							? () => updateGlobalCollapseButton(globalCollapseButton, container)
+							: undefined,
 					);
 				}
 			}
+		}
+		if (globalCollapseButton) {
+			updateGlobalCollapseButton(globalCollapseButton, container);
 		}
 	} catch (error) {
 		const message = error instanceof GroupByError
@@ -285,11 +303,13 @@ function renderEntry(
 	keepPropertiesVisibleWhenCollapsed: boolean,
 	container: HTMLElement,
 	context: MarkdownPostProcessorContext,
+	forceCollapsible: boolean,
+	onCollapseStateChange?: () => void,
 ): void {
 	const item = container.createDiv({ cls: 'callout callout-tracker__entry' });
 	item.setAttr('data-callout', entry.type);
 	const collapseState = collapseMode === 'default' ? entry.collapseState : collapseMode;
-	const isCollapsible = collapseState !== undefined;
+	const isCollapsible = collapseState !== undefined || forceCollapsible;
 	if (isCollapsible) {
 		item.addClass('callout-tracker__entry--collapsible');
 	} else {
@@ -305,11 +325,11 @@ function renderEntry(
 	if (isCollapsible) {
 		titleEl.setAttr('role', 'button');
 		titleEl.setAttr('tabindex', '0');
-		titleEl.setAttr('aria-expanded', String(collapseState === 'expanded'));
+		titleEl.setAttr('aria-expanded', String(collapseState !== 'collapsed'));
 		titleEl.addClass('callout-tracker__collapsible-title');
 		const collapseIconEl = titleEl.createDiv({ cls: 'callout-tracker__collapse-icon' });
 		setIcon(collapseIconEl, 'chevron-right');
-		item.classList.toggle('callout-tracker__entry--expanded', collapseState === 'expanded');
+		item.classList.toggle('callout-tracker__entry--expanded', collapseState !== 'collapsed');
 	}
 	const iconEl = titleEl.createDiv({ cls: 'callout-icon' });
 	titleEl.classList.toggle('callout-tracker__title--checked', entry.checked === true);
@@ -377,6 +397,7 @@ function renderEntry(
 			titleEl.setAttr('aria-expanded', String(nextExpanded));
 			contentEl.hidden = !nextExpanded;
 			item.classList.toggle('callout-tracker__entry--expanded', nextExpanded);
+			onCollapseStateChange?.();
 		};
 		titleEl.addEventListener('click', (event) => {
 			event.preventDefault();
@@ -425,6 +446,60 @@ function renderEntry(
 	}
 	if (checkbox) {
 		applyCalloutCheckboxColor(checkbox, item);
+	}
+}
+
+function createGlobalCollapseButton(container: HTMLElement): HTMLButtonElement {
+	const button = container.createEl('button', {
+		cls: 'callout-tracker__collapse-all',
+		attr: { type: 'button' },
+	});
+	button.createSpan({ cls: 'callout-tracker__collapse-all-label', text: 'Expand all' });
+	setIcon(button.createSpan({ cls: 'callout-tracker__collapse-all-icon' }), 'chevron-down');
+	button.addEventListener('click', () => {
+		const entries = Array.from(
+			container.querySelectorAll<HTMLElement>('.callout-tracker__entry--collapsible'),
+		);
+		const allExpanded = entries.length > 0 && entries.every((entry) =>
+			entry.querySelector('.callout-tracker__collapsible-title')?.getAttribute('aria-expanded') === 'true',
+		);
+		setAllCalloutsExpanded(container, !allExpanded);
+		updateGlobalCollapseButton(button, container);
+	});
+	return button;
+}
+
+function setAllCalloutsExpanded(container: HTMLElement, expanded: boolean): void {
+	for (const entry of Array.from(
+		container.querySelectorAll<HTMLElement>('.callout-tracker__entry--collapsible'),
+	)) {
+		const title = entry.querySelector<HTMLElement>('.callout-tracker__collapsible-title');
+		const content = entry.querySelector<HTMLElement>('.callout-content');
+		if (!title || !content) {
+			continue;
+		}
+		title.setAttr('aria-expanded', String(expanded));
+		content.hidden = !expanded;
+		entry.classList.toggle('callout-tracker__entry--expanded', expanded);
+	}
+}
+
+function updateGlobalCollapseButton(button: HTMLButtonElement, container: HTMLElement): void {
+	const entries = Array.from(
+		container.querySelectorAll<HTMLElement>('.callout-tracker__entry--collapsible'),
+	);
+	const allExpanded = entries.length > 0 && entries.every((entry) =>
+		entry.querySelector('.callout-tracker__collapsible-title')?.getAttribute('aria-expanded') === 'true',
+	);
+	const label = allExpanded ? 'Collapse all' : 'Expand all';
+	button.setAttr('aria-label', label);
+	const text = button.querySelector<HTMLElement>('.callout-tracker__collapse-all-label');
+	const icon = button.querySelector<HTMLElement>('.callout-tracker__collapse-all-icon');
+	if (text) {
+		text.textContent = label;
+	}
+	if (icon) {
+		setIcon(icon, allExpanded ? 'chevron-up' : 'chevron-down');
 	}
 }
 

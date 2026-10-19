@@ -38,6 +38,7 @@ export interface CalloutTrackerBlockConfig {
 	orderBy: string;
 	display: CalloutTrackerDisplayMode;
 	collapse: CalloutTrackerCollapseMode;
+	collapseSpecified: boolean;
 }
 
 export type CalloutTrackerDisplayMode = 'all' | 'onlySummary' | 'onlyCallouts';
