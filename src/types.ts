@@ -46,8 +46,10 @@ export type CalloutTrackerCollapseMode = 'default' | 'collapsed' | 'expanded';
 
 export interface CustomCallout {
 	name: string;
-	fontColor: string;
-	backgroundColor: string;
+	fontColorDark: string;
+	fontColorLight: string;
+	backgroundColorDark: string;
+	backgroundColorLight: string;
 	hasBorder: boolean;
 	borderColor: string;
 	borderWidth?: string;

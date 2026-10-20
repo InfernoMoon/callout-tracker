@@ -1,5 +1,8 @@
-import { App, PluginSettingTab, Setting, setIcon } from 'obsidian';
-import { applyCalloutStyle, normalizeIconName } from './callout-styles';
+import { App, Notice, PluginSettingTab, Setting, setIcon } from 'obsidian';
+import {
+	applyCalloutStyle,
+	normalizeIconName,
+} from './callout-styles';
 import { CalloutIconSuggest } from './icon-suggest';
 import type CalloutTrackerPlugin from './main';
 import type { CalloutInsertTemplate, CalloutProperty, CustomCallout } from './types';
@@ -34,8 +37,10 @@ export const DEFAULT_CALLOUT_INSERT_TEMPLATE: CalloutInsertTemplate = {
 export const DEFAULT_CUSTOM_CALLOUTS: CustomCallout[] = [
 	{
 		name: 'todo',
-		fontColor: '#45f27d',
-		backgroundColor: '#0a2410',
+		fontColorDark: '#45f27d',
+		fontColorLight: '#176b37',
+		backgroundColorDark: '#0a2410',
+		backgroundColorLight: '#e9f8ee',
 		hasBorder: true,
 		borderColor: '#45f27d',
 		borderWidth: '3px',
@@ -45,8 +50,10 @@ export const DEFAULT_CUSTOM_CALLOUTS: CustomCallout[] = [
 	},
 	{
 		name: 'idea',
-		fontColor: '#dfbb05',
-		backgroundColor: '#383200',
+		fontColorDark: '#dfbb05',
+		fontColorLight: '#705e00',
+		backgroundColorDark: '#383200',
+		backgroundColorLight: '#fff8d9',
 		hasBorder: true,
 		borderColor: '#ebd107',
 		borderWidth: '4px',
@@ -56,8 +63,10 @@ export const DEFAULT_CUSTOM_CALLOUTS: CustomCallout[] = [
 	},
 	{
 		name: 'note',
-		fontColor: '#05dfd8',
-		backgroundColor: '#003238',
+		fontColorDark: '#05dfd8',
+		fontColorLight: '#0f6563',
+		backgroundColorDark: '#033035',
+		backgroundColorLight: '#e6f7f6',
 		hasBorder: true,
 		borderColor: '#0dbbac',
 		borderWidth: '4px',
@@ -67,8 +76,10 @@ export const DEFAULT_CUSTOM_CALLOUTS: CustomCallout[] = [
 	},
 	{
 		name: 'hook',
-		fontColor: '#f0a34b',
-		backgroundColor: '#1a0d04',
+		fontColorDark: '#f0a34b',
+		fontColorLight: '#8a4c0b',
+		backgroundColorDark: '#1a0d04',
+		backgroundColorLight: '#fff1e2',
 		hasBorder: true,
 		borderColor: '#e78a32',
 		borderWidth: '3px',
@@ -78,8 +89,10 @@ export const DEFAULT_CUSTOM_CALLOUTS: CustomCallout[] = [
 	},
 	{
 		name: 'rule',
-		fontColor: '#73b787',
-		backgroundColor: '#08201e',
+		fontColorDark: '#73b787',
+		fontColorLight: '#315e42',
+		backgroundColorDark: '#08201e',
+		backgroundColorLight: '#eaf3ec',
 		hasBorder: true,
 		borderColor: '#3e8252',
 		borderWidth: '4px',
@@ -89,8 +102,10 @@ export const DEFAULT_CUSTOM_CALLOUTS: CustomCallout[] = [
 	},
 	{
 		name: 'clue',
-		fontColor: '#e86fa7',
-		backgroundColor: '#180611',
+		fontColorDark: '#e86fa7',
+		fontColorLight: '#88385f',
+		backgroundColorDark: '#180611',
+		backgroundColorLight: '#fbeaf2',
 		hasBorder: true,
 		borderColor: '#ff5fa2',
 		borderWidth: '3px',
@@ -121,6 +136,59 @@ export class CalloutTrackerSettingTab extends PluginSettingTab {
 	constructor(app: App, plugin: CalloutTrackerPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
+		plugin.registerEvent(app.workspace.on('css-change', () => this.updateThemeToggleButtons()));
+	}
+
+	private addCustomCalloutHeaderButtons(setting: Setting): void {
+		setting.addButton((button) =>
+			button
+				.setButtonText('Add custom callout')
+				.setCta()
+				.onClick(async () => {
+					this.plugin.settings.customCallouts.push(createDefaultCustomCallout());
+					await this.plugin.saveSettings();
+					this.plugin.updateCalloutStyles();
+					this.refreshSettings();
+				}),
+		);
+		setting.addButton((button) => {
+			button
+				.setIcon(this.getThemeToggleIcon())
+				.setTooltip(this.getThemeToggleTooltip())
+				.setClass('callout-tracker__theme-toggle');
+			return button.onClick(() => {
+				const app = this.plugin.app as App & {
+					commands?: { executeCommandById(commandId: string): boolean };
+				};
+				const toggled = app.commands?.executeCommandById('theme:toggle-light-dark') ?? false;
+				if (!toggled) {
+					new Notice('Could not switch theme. Update Obsidian and try again.');
+					return;
+				}
+				this.updateThemeToggleButtons();
+			});
+		});
+	}
+
+	private getThemeToggleIcon(): string {
+		return this.isDarkMode() ? 'sun' : 'moon';
+	}
+
+	private getThemeToggleTooltip(): string {
+		return `Switch Obsidian to ${this.isDarkMode() ? 'light' : 'dark'} mode`;
+	}
+
+	private isDarkMode(): boolean {
+		return document.body.classList.contains('theme-dark');
+	}
+
+	private updateThemeToggleButtons(): void {
+		const nextTheme = this.isDarkMode() ? 'light' : 'dark';
+		this.containerEl.querySelectorAll<HTMLElement>('.callout-tracker__theme-toggle').forEach((button) => {
+			setIcon(button, nextTheme === 'light' ? 'sun' : 'moon');
+			button.setAttribute('aria-label', `Switch Obsidian to ${nextTheme} mode`);
+			button.setAttribute('title', `Switch Obsidian to ${nextTheme} mode`);
+		});
 	}
 
 	getSettingDefinitions() {
@@ -151,17 +219,7 @@ export class CalloutTrackerSettingTab extends PluginSettingTab {
 				desc: 'Define the appearance of native Obsidian callouts by name.',
 				render: (setting: Setting): void => {
 					setting.settingEl.addClass('callout-tracker__custom-callouts-setting');
-					setting.addButton((button) =>
-						button
-							.setButtonText('Add custom callout')
-							.setCta()
-							.onClick(async () => {
-								this.plugin.settings.customCallouts.push(createDefaultCustomCallout());
-								await this.plugin.saveSettings();
-								this.plugin.updateCalloutStyles();
-								this.refreshSettings();
-							}),
-					);
+					this.addCustomCalloutHeaderButtons(setting);
 
 					const customCalloutsEl =
 						setting.settingEl.querySelector<HTMLElement>(
@@ -199,20 +257,11 @@ export class CalloutTrackerSettingTab extends PluginSettingTab {
 			.setDesc('Keep callout properties visible while the rest of a collapsed callout is hidden.');
 		addKeepPropertiesVisibleWhenCollapsedControl(keepPropertiesVisibleSetting, this.plugin);
 
-		new Setting(containerEl)
+		const customCalloutsSetting = new Setting(containerEl)
 			.setName('Custom callouts')
-			.setDesc('Define the appearance of native Obsidian callouts by name.')
-			.addButton((button) =>
-				button
-					.setButtonText('Add custom callout')
-					.setCta()
-					.onClick(async () => {
-						this.plugin.settings.customCallouts.push(createDefaultCustomCallout());
-						await this.plugin.saveSettings();
-						this.plugin.updateCalloutStyles();
-						this.refreshSettings();
-					}),
-			);
+			.setDesc('Define the appearance of native Obsidian callouts by name.');
+		customCalloutsSetting.settingEl.addClass('callout-tracker__custom-callouts-setting');
+		this.addCustomCalloutHeaderButtons(customCalloutsSetting);
 
 		const customCalloutsEl = containerEl.createDiv({
 			cls: 'callout-tracker__custom-callouts',
@@ -281,8 +330,10 @@ function parsePrefixList(value: string): string[] {
 function createDefaultCustomCallout(): CustomCallout {
 	return {
 		name: 'custom-callout',
-		fontColor: '#ffffff',
-		backgroundColor: '#383200',
+		fontColorDark: '#ffffff',
+		fontColorLight: '#333333',
+		backgroundColorDark: '#383200',
+		backgroundColorLight: '#f2f2f2',
 		hasBorder: true,
 		borderColor: '#ebd107',
 		hasIcon: true,
@@ -320,25 +371,10 @@ function renderCustomCallout(
 			}),
 		);
 
-	new Setting(fieldsEl)
-		.setName('Font color')
-		.addColorPicker((color) =>
-			color.setValue(callout.fontColor).onChange(async (value) => {
-				callout.fontColor = value;
-				refreshPreview();
-				await saveCalloutSettings(plugin);
-			}),
-		);
-
-	new Setting(fieldsEl)
-		.setName('Background color')
-		.addColorPicker((color) =>
-			color.setValue(callout.backgroundColor).onChange(async (value) => {
-				callout.backgroundColor = value;
-				refreshPreview();
-				await saveCalloutSettings(plugin);
-			}),
-		);
+	addCalloutColorSetting(plugin, fieldsEl, callout, 'Text color (dark mode)', 'fontColorDark', () => refreshPreview());
+	addCalloutColorSetting(plugin, fieldsEl, callout, 'Text color (light mode)', 'fontColorLight', () => refreshPreview());
+	addCalloutColorSetting(plugin, fieldsEl, callout, 'Background color (dark mode)', 'backgroundColorDark', () => refreshPreview());
+	addCalloutColorSetting(plugin, fieldsEl, callout, 'Background color (light mode)', 'backgroundColorLight', () => refreshPreview());
 
 	let borderColorSetting: Setting | null = null;
 	new Setting(fieldsEl)
@@ -354,13 +390,14 @@ function renderCustomCallout(
 
 	borderColorSetting = new Setting(fieldsEl)
 		.setName('Border color')
-		.addColorPicker((color) =>
-			color.setValue(callout.borderColor).onChange(async (value) => {
+		.addColorPicker((color) => {
+			color.setValue(callout.borderColor);
+			return color.onChange(async (value) => {
 				callout.borderColor = value;
 				refreshPreview();
 				await saveCalloutSettings(plugin);
-			}),
-		);
+			});
+		});
 	borderColorSetting.settingEl.toggle(callout.hasBorder);
 
 	let iconSetting: Setting | null = null;
@@ -432,6 +469,27 @@ function renderCustomCallout(
 async function saveCalloutSettings(plugin: CalloutTrackerPlugin): Promise<void> {
 	await plugin.saveSettings();
 	plugin.updateCalloutStyles();
+}
+
+type CalloutColorField = 'fontColorDark' | 'fontColorLight' | 'backgroundColorDark' | 'backgroundColorLight';
+
+function addCalloutColorSetting(
+	plugin: CalloutTrackerPlugin,
+	containerEl: HTMLElement,
+	callout: CustomCallout,
+	name: string,
+	field: CalloutColorField,
+	refreshPreview: () => void,
+): void {
+	new Setting(containerEl)
+		.setName(name)
+		.addColorPicker((color) =>
+			color.setValue(callout[field]).onChange(async (value) => {
+				callout[field] = value;
+				refreshPreview();
+				await saveCalloutSettings(plugin);
+			}),
+		);
 }
 
 function updateIconPreview(containerEl: HTMLElement, iconName: string): void {

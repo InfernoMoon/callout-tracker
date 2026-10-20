@@ -49,23 +49,28 @@ export function findCalloutStyle(
 }
 
 export function applyCalloutStyle(element: HTMLElement, callout: CustomCallout): void {
-	const fontColor = normalizeHexColor(callout.fontColor, '');
-	const backgroundColor = normalizeHexColor(callout.backgroundColor, '');
-	const borderColor = normalizeHexColor(callout.borderColor, fontColor);
+	const fontColorDark = normalizeHexColor(callout.fontColorDark, '');
+	const fontColorLight = normalizeHexColor(callout.fontColorLight, fontColorDark);
+	const backgroundColorDark = normalizeHexColor(callout.backgroundColorDark, '');
+	const backgroundColorLight = normalizeHexColor(callout.backgroundColorLight, backgroundColorDark);
+	const borderColor = normalizeHexColor(callout.borderColor, fontColorDark);
 	const borderWidth = normalizeBorderWidth(callout.borderWidth);
 	const borderStyle = normalizeBorderStyle(callout.borderStyle);
+	element.addClass('callout-tracker--custom-styled');
 
-	if (fontColor) {
-		setDynamicCssProp(element, 'color', fontColor);
+	if (fontColorDark) {
+		setColorVariants(element, 'font', fontColorDark, fontColorLight);
+		setDynamicCssProp(element, 'color', 'var(--callout-tracker-active-font-color)');
 		for (const child of element.findAll('.callout-title, .callout-content, .callout-properties')) {
-			setDynamicCssProp(child, 'color', fontColor);
+			setDynamicCssProp(child, 'color', 'var(--callout-tracker-active-font-color)');
 		}
 	}
-	if (backgroundColor) {
-		setDynamicCssProp(element, 'background-color', backgroundColor);
+	if (backgroundColorDark) {
+		setColorVariants(element, 'background', backgroundColorDark, backgroundColorLight);
+		setDynamicCssProp(element, 'background-color', 'var(--callout-tracker-active-background-color)');
 	}
-	if (fontColor) {
-		setDynamicCssProp(element, '--callout-color', hexToRgb(fontColor));
+	if (fontColorDark) {
+		setDynamicCssProp(element, '--callout-color', 'var(--callout-tracker-active-callout-color)');
 	}
 	if (callout.hasBorder && borderColor) {
 		setDynamicCssProp(
@@ -86,6 +91,24 @@ export function applyCalloutStyle(element: HTMLElement, callout: CustomCallout):
 	} else {
 		setDynamicCssProp(element, '--callout-icon', '');
 	}
+}
+
+function setColorVariants(element: HTMLElement, name: string, darkColor: string, lightColor: string): void {
+	setDynamicCssProp(element, `--callout-tracker-${name}-color-dark`, darkColor);
+	setDynamicCssProp(element, `--callout-tracker-${name}-color-light`, lightColor);
+	if (name === 'font') {
+		setDynamicCssProp(element, '--callout-tracker-callout-color-dark', hexToRgb(darkColor));
+		setDynamicCssProp(element, '--callout-tracker-callout-color-light', hexToRgb(lightColor));
+	}
+}
+
+function hexToChannels(hex: string): [number, number, number] {
+	const value = hex.slice(1);
+	return [
+		Number.parseInt(value.slice(0, 2), 16),
+		Number.parseInt(value.slice(2, 4), 16),
+		Number.parseInt(value.slice(4, 6), 16),
+	];
 }
 
 function applyCalloutProperties(
@@ -156,9 +179,5 @@ function normalizeBorderStyle(value: string | undefined): string {
 }
 
 function hexToRgb(hex: string): string {
-	const value = hex.slice(1);
-	const red = Number.parseInt(value.slice(0, 2), 16);
-	const green = Number.parseInt(value.slice(2, 4), 16);
-	const blue = Number.parseInt(value.slice(4, 6), 16);
-	return `${red}, ${green}, ${blue}`;
+	return hexToChannels(hex).join(', ');
 }

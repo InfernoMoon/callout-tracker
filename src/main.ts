@@ -9,10 +9,12 @@ import { CalloutStyleManager } from './callout-styles';
 import { CalloutPropertyIndex } from './property-index';
 import {
 	DEFAULT_CALLOUT_INSERT_TEMPLATE,
+	DEFAULT_CUSTOM_CALLOUTS,
 	DEFAULT_SETTINGS,
 	CalloutTrackerSettings,
 	CalloutTrackerSettingTab,
 } from './settings';
+import type { CustomCallout } from './types';
 
 export default class CalloutTrackerPlugin extends Plugin {
 	settings!: CalloutTrackerSettings;
@@ -28,9 +30,25 @@ export default class CalloutTrackerPlugin extends Plugin {
 			savedSettings ?? {},
 		);
 		this.settings.ignoredPrefixes = [...this.settings.ignoredPrefixes];
-		this.settings.customCallouts = this.settings.customCallouts.map((callout) => ({
-			...callout,
-		}));
+		const storedCallouts = (savedSettings?.customCallouts ?? this.settings.customCallouts) as StoredCustomCallout[];
+		this.settings.customCallouts = storedCallouts.map((storedCallout) => {
+			const {
+				fontColor: legacyFontColor,
+				backgroundColor: legacyBackgroundColor,
+				...callout
+			} = storedCallout;
+			const defaultCallout = DEFAULT_CUSTOM_CALLOUTS.find(
+				(candidate) => candidate.name === callout.name,
+			);
+			return {
+				...defaultCallout,
+				...callout,
+				fontColorDark: callout.fontColorDark ?? legacyFontColor ?? defaultCallout?.fontColorDark ?? '#ffffff',
+				fontColorLight: callout.fontColorLight ?? defaultCallout?.fontColorLight ?? '#333333',
+				backgroundColorDark: callout.backgroundColorDark ?? legacyBackgroundColor ?? defaultCallout?.backgroundColorDark ?? '#383200',
+				backgroundColorLight: callout.backgroundColorLight ?? defaultCallout?.backgroundColorLight ?? '#f2f2f2',
+			};
+		});
 		this.settings.calloutInsertTemplates = this.settings.calloutInsertTemplates.map((template) => ({
 			...template,
 			isCollapsible: template.isCollapsible ?? false,
@@ -116,7 +134,20 @@ function isPropertySourcePath(path: string): boolean {
 	return /\.(?:md|canvas)$/i.test(path);
 }
 
-type StoredCalloutTrackerSettings = Partial<CalloutTrackerSettings> & {
+type StoredCustomCallout = Omit<
+	CustomCallout,
+	'fontColorDark' | 'fontColorLight' | 'backgroundColorDark' | 'backgroundColorLight'
+> & {
+	fontColorDark?: string;
+	fontColorLight?: string;
+	backgroundColorDark?: string;
+	backgroundColorLight?: string;
+	fontColor?: string;
+	backgroundColor?: string;
+};
+
+type StoredCalloutTrackerSettings = Omit<Partial<CalloutTrackerSettings>, 'customCallouts'> & {
+	customCallouts?: StoredCustomCallout[];
 	ignoredFilePrefixes?: string[];
 	ignoredFolderPrefixes?: string[];
 };

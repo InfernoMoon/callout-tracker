@@ -12,6 +12,22 @@
 	padding: 0.75em 1em;
 }
 
+.callout-tracker--custom-styled {
+	--callout-tracker-active-font-color: var(--callout-tracker-font-color-dark);
+	--callout-tracker-active-background-color: var(--callout-tracker-background-color-dark);
+	--callout-tracker-active-callout-color: var(--callout-tracker-callout-color-dark);
+}
+
+body.theme-light .callout-tracker--custom-styled {
+	--callout-tracker-active-font-color: var(--callout-tracker-font-color-light);
+	--callout-tracker-active-background-color: var(--callout-tracker-background-color-light);
+	--callout-tracker-active-callout-color: var(--callout-tracker-callout-color-light);
+}
+
+.callout-tracker__theme-toggle {
+	padding: 0.25em !important;
+}
+
 .callout-tracker__collapse-all {
 	align-items: center;
 	background: transparent;

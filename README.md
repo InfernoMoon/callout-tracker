@@ -55,7 +55,9 @@ Obsidian's `+` and `-` callout markers are supported: `+` starts expanded and `-
 
 ## Custom callout styles
 
-In **Settings → Callout Tracker**, add custom callout types and define their font color, background color, optional left border, and optional icon. A live preview shows how each style looks. Styles apply to normal Obsidian callouts and tracker results.
+In **Settings → Callout Tracker**, add custom callout types and define separate text and background colors for dark and light mode. The border color is shared, and an icon is optional. The theme button switches Obsidian’s mode so you can preview the styles in the app. Styles apply to normal Obsidian callouts and tracker results.
+
+Set separate text and background colors for dark and light modes; the border color is shared. Use the theme button in settings to switch Obsidian between modes while previewing your styles.
 
 <img src="./assets/callout-settings.png" alt="Callout Settings" style="max-height: 200px; max-width: 100%; height: auto; width: auto;">
 
@@ -66,7 +68,6 @@ Properties attach structured values directly to a callout. Put `key:: value` row
 ```markdown
 > [!cost] Buy tickets for concert
 > cost:: 46
-> date:: 2026-09-22
 > status:: planned
 > attendees:: me, Mike
 >

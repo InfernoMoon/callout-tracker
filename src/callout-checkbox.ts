@@ -8,7 +8,7 @@ export function applyCalloutCheckboxColor(checkbox: HTMLInputElement, callout: H
 	const calloutColor = getComputedStyle(callout).getPropertyValue('--callout-color').trim();
 	const color = calloutColor
 		? /^\d+(?:\s*,\s*\d+){2}(?:\s*,\s*[\d.]+)?$/.test(calloutColor)
-			? `rgb(${calloutColor})`
+			? 'rgb(var(--callout-color))'
 			: calloutColor
 		: getAccentColor();
 	checkbox.style.setProperty('--callout-tracker-checkbox-color', color || '#7f6df2');
